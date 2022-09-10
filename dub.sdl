@@ -1,0 +1,9 @@
+name "hobo"
+description "A home automation software written in D"
+authors "seeseemelk"
+copyright "Copyright © 2022, seeseemelk"
+license "GPLv3"
+
+subPackage "api"
+subPackage "server"
+subPackage "plugin-hello"

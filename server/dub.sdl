@@ -1,0 +1,3 @@
+name "server"
+dependency "vibe-d:http" version="~>0.9.5"
+targetType "executable"

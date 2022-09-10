@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/hobo
+hobo.so
+hobo.dylib
+hobo.dll
+hobo.a
+hobo.lib
+hobo-test-*
+*.exe
+*.o
+*.obj
+*.lst
