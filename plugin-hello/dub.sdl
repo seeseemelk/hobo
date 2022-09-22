@@ -1,2 +1,0 @@
-name "plugin-hello"
-dependency "hobo:api" version="*"

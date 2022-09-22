@@ -1,15 +1,36 @@
-.dub
-docs.json
-__dummy.html
-docs/
-/hobo
-hobo.so
-hobo.dylib
-hobo.dll
-hobo.a
-hobo.lib
-hobo-test-*
-*.exe
-*.o
-*.obj
-*.lst
+# Gradle
+.gradle/
+build/
+
+# Eclipse
+.project
+.classpath
+.settings/
+bin/
+
+# IntelliJ
+.idea
+*.ipr
+*.iml
+*.iws
+
+# NetBeans
+nb-configuration.xml
+
+# Visual Studio Code
+.vscode
+.factorypath
+
+# OSX
+.DS_Store
+
+# Vim
+*.swp
+*.swo
+
+# patch
+*.orig
+*.rej
+
+# Local environment
+.env

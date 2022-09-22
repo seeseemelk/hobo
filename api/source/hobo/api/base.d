@@ -1,2 +1,0 @@
-module hobo.api.base;
-
