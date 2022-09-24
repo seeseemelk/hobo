@@ -11,6 +11,6 @@ pluginManagement {
 
 rootProject.name = 'hobo'
 include 'common'
-include 'core'
 include 'common-client'
-include 'mqtt-connector'
+include 'core'
+include 'tasmota-connector'
