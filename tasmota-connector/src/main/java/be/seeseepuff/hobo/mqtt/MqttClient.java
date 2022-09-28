@@ -7,10 +7,8 @@ import be.seeseepuff.hobo.mqtt.model.State;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.runtime.StartupEvent;
-import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.reactive.messaging.mqtt.ReceivingMqttMessage;
-import io.vertx.mutiny.core.Vertx;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
@@ -41,18 +39,28 @@ public class MqttClient
 
 	private final Map<String, Long> topicToId = new HashMap<>();
 
-	public Multi<Void> onStartup(@Observes StartupEvent e, Vertx vertx)
+	public void onStartup(@Observes StartupEvent e)
 	{
-		vertx.executeBlockingAndAwait()
-		return hoboApi.intPropertyRequestsForOwner(owner)
-			.onItem().call(this::onRequest)
-			.onItem().ignore();
+		hoboApi.intPropertyRequestsForOwner(owner)
+//			.onSubscription().invoke(() -> log.info("Subscribing"))
+//			.onItem().invoke(() -> log.info("Got an item"))
+			.onCompletion().invoke(() -> log.warn("Property requests completed"))
+			.onFailure().retry().withBackOff(Duration.ofSeconds(5)).indefinitely()
+			.subscribe().asStream()
+			.forEach(this::onRequest);
 	}
 
-	private Uni<Void> onRequest(IntPropertyRequest request)
+//	@Outgoing("propertyRequest")
+//	public Multi<IntPropertyRequest> requests()
+//	{
+//		log.warn("Create request");
+//		return Multi.createFrom().empty();
+//	}
+
+	private void onRequest(IntPropertyRequest request)
 	{
 		log.info("Got property request for {}", request.getName());
-		return Uni.createFrom().voidItem();
+//		return Uni.createFrom().voidItem();
 	}
 
 	@Incoming("discovery")

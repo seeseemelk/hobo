@@ -1,36 +1,48 @@
 package be.seeseepuff.hobo.repositories;
 
-import be.seeseepuff.hobo.models.StoredIntProperty;
 import be.seeseepuff.hobo.models.StoredDevice;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import be.seeseepuff.hobo.models.StoredIntProperty;
+import io.quarkus.hibernate.reactive.panache.PanacheRepository;
+import io.smallrye.mutiny.Uni;
 
 import javax.enterprise.context.ApplicationScoped;
-import java.util.Optional;
+import javax.persistence.NoResultException;
+import java.util.List;
 
 @ApplicationScoped
 public class IntPropertyRepository implements PanacheRepository<StoredIntProperty>
 {
-	public Optional<StoredIntProperty> getProperty(StoredDevice device, String name)
+	public Uni<StoredIntProperty> getProperty(StoredDevice device, String name)
 	{
-		return find("device = ?1 and name = ?2", device, name).singleResultOptional();
+		return find("device = ?1 and name = ?2", device, name).singleResult();
 	}
 
-	public void createProperty(StoredIntProperty property)
+	public Uni<List<StoredIntProperty>> getPropertiesFor(StoredDevice device)
 	{
-		persist(property);
+		return find("device", device).list();
 	}
 
-	public StoredIntProperty createProperty(StoredDevice device, String name)
+	public Uni<List<StoredIntProperty>> getPropertiesFor(long device)
+	{
+		return find("device_id", device).list();
+	}
+
+	public Uni<StoredIntProperty> createProperty(StoredIntProperty property)
+	{
+		return persist(property);
+	}
+
+	public Uni<StoredIntProperty> createProperty(StoredDevice device, String name)
 	{
 		StoredIntProperty property = new StoredIntProperty();
 		property.setDevice(device);
 		property.setName(name);
-		createProperty(property);
-		return property;
+		return createProperty(property);
 	}
 
-	public StoredIntProperty getOrCreate(StoredDevice device, String name)
+	public Uni<StoredIntProperty> getOrCreate(StoredDevice device, String name)
 	{
-		return getProperty(device, name).orElseGet(() -> createProperty(device, name));
+		return getProperty(device, name)
+			.onFailure(NoResultException.class).recoverWithUni(() -> createProperty(device, name));
 	}
 }

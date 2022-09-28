@@ -1,32 +1,40 @@
 package be.seeseepuff.hobo.repositories;
 
 import be.seeseepuff.hobo.models.StoredDevice;
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import io.quarkus.hibernate.reactive.panache.PanacheRepository;
+import io.smallrye.mutiny.Uni;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.enterprise.context.ApplicationScoped;
 import java.util.List;
-import java.util.Optional;
 
 @ApplicationScoped
+@Slf4j
 public class DeviceRepository implements PanacheRepository<StoredDevice>
 {
-	public List<StoredDevice> getAllDevices()
+	public Uni<List<StoredDevice>> getAllDevices()
 	{
-		return findAll().list();
+		return listAll();
 	}
 
-	public Optional<StoredDevice> getDeviceById(long id)
+	public Uni<StoredDevice> getDeviceById(long id)
 	{
-		return findByIdOptional(id);
+		return findById(id);
 	}
 
-	public Optional<StoredDevice> findDeviceByOwnerAndName(String owner, String name)
+	public Uni<StoredDevice> findDeviceByOwnerAndName(String owner, String name)
 	{
-		return find("owner = ?1 and name = ?2", owner, name).singleResultOptional();
+		return find("owner = ?1 and name = ?2", owner, name).singleResult();
 	}
 
-	public void createDevice(StoredDevice device)
+	public Uni<StoredDevice> createDevice(StoredDevice device)
 	{
-		persist(device);
+		log.info("Creating device {} for owner {}", device.getName(), device.getOwner());
+		return persist(device);
+	}
+
+	public Uni<List<StoredDevice>> findDevicesByOwner(String owner)
+	{
+		return list("owner", owner);
 	}
 }

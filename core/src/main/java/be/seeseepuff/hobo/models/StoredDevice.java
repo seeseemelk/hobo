@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import javax.persistence.*;
-import java.util.List;
 
 @Entity
 @Getter
@@ -24,6 +23,6 @@ public class StoredDevice extends Device
 	private String displayableName;
 	private String name;
 	private boolean online;
-	@OneToMany(mappedBy = "device")
-	private List<StoredIntProperty> intProperties;
+//	@OneToMany(mappedBy = "device")
+//	private List<StoredIntProperty> intProperties;
 }
