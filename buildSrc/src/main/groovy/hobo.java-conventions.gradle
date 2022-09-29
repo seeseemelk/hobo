@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'io.quarkus'
-    id 'io.freefair.lombok' version '6.5.1'
+    id 'io.freefair.lombok'
 }
 
 repositories {
@@ -12,10 +12,12 @@ repositories {
 dependencies {
     implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
     testImplementation 'io.quarkus:quarkus-junit5'
+    testImplementation 'io.quarkus:quarkus-junit5-mockito'
+    testImplementation 'org.hamcrest:hamcrest:2.2'
 }
 
 group 'be.seeseepuff'
-version '1.0-SNAPSHOT'
+version 'SNAPSHOT'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11

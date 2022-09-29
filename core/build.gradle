@@ -1,40 +1,10 @@
 plugins {
-    id 'java'
-    id 'io.quarkus'
-    id 'io.freefair.lombok' version '6.5.1'
-}
-
-repositories {
-    mavenCentral()
-    mavenLocal()
+    id 'hobo.java-conventions'
 }
 
 dependencies {
-    implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
-    implementation project(':common')
     //implementation 'io.quarkus:quarkus-flyway'
     implementation 'io.quarkus:quarkus-hibernate-reactive-panache'
-    implementation 'io.quarkus:quarkus-smallrye-graphql'
     implementation 'io.quarkus:quarkus-reactive-pg-client'
-    implementation 'io.quarkus:quarkus-arc'
-    testImplementation 'io.quarkus:quarkus-junit5'
-    testImplementation 'io.quarkus:quarkus-junit5-mockito'
-    testImplementation 'org.hamcrest:hamcrest:2.2'
-}
-
-group 'be.seeseepuff'
-version '1.0-SNAPSHOT'
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
-}
-
-compileJava {
-    options.encoding = 'UTF-8'
-    options.compilerArgs << '-parameters'
-}
-
-compileTestJava {
-    options.encoding = 'UTF-8'
+    implementation 'io.quarkus:quarkus-smallrye-graphql'
 }
