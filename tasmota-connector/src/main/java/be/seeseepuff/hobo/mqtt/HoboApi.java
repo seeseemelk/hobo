@@ -1,8 +1,11 @@
 package be.seeseepuff.hobo.mqtt;
 
+import be.seeseepuff.hobo.graphql.requests.DeviceFilter;
+import be.seeseepuff.hobo.graphql.requests.IntPropertyUpdateRequest;
+import be.seeseepuff.hobo.graphql.requests.PropertyUpdateFilter;
 import be.seeseepuff.hobo.mqtt.dto.DeviceId;
-import be.seeseepuff.hobo.mqtt.dto.PropertyName;
-import be.seeseepuff.hobo.mqtt.model.IntPropertyRequest;
+import be.seeseepuff.hobo.mqtt.dto.IntPropertyName;
+import be.seeseepuff.hobo.mqtt.dto.IntPropertyUpdate;
 import io.smallrye.graphql.api.Subscription;
 import io.smallrye.graphql.client.typesafe.api.GraphQLClientApi;
 import io.smallrye.mutiny.Multi;
@@ -10,18 +13,20 @@ import io.smallrye.mutiny.Uni;
 import org.eclipse.microprofile.graphql.Mutation;
 import org.eclipse.microprofile.graphql.Query;
 
+import java.util.List;
+
 @GraphQLClientApi(configKey = "hobo")
 public interface HoboApi
 {
 	@Query
-	Uni<DeviceId> getDeviceByOwnerAndName(String owner, String name);
+	Uni<DeviceId> getDevice(DeviceFilter filter);
+
+	@Mutation("getOrCreateDevice")
+	Uni<DeviceId> getOrCreateDevice(String owner, String name);
 
 	@Mutation
-	Uni<DeviceId> createDevice(String owner, String name);
-
-	@Mutation("reportIntProperty")
-	Uni<PropertyName> reportIntProperty(long deviceId, String property, int value);
+	Uni<List<IntPropertyName>> updateIntProperty(long deviceId, List<IntPropertyUpdateRequest> updates);
 
 	@Subscription
-	Multi<IntPropertyRequest> intPropertyRequestsForOwner(String owner);
+	Multi<IntPropertyUpdate> intPropertyUpdates(PropertyUpdateFilter filter);
 }

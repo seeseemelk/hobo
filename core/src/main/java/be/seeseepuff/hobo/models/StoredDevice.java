@@ -20,9 +20,5 @@ public class StoredDevice extends Device
 	@GeneratedValue
 	private long id;
 	private String owner;
-	private String displayableName;
 	private String name;
-	private boolean online;
-//	@OneToMany(mappedBy = "device")
-//	private List<StoredIntProperty> intProperties;
 }

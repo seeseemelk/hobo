@@ -1,28 +1,39 @@
 package be.seeseepuff.hobo.mqtt;
 
+import be.seeseepuff.hobo.graphql.requests.IntPropertyUpdateRequest;
 import be.seeseepuff.hobo.mqtt.dto.DeviceId;
+import be.seeseepuff.hobo.mqtt.dto.IntProperty;
+import be.seeseepuff.hobo.mqtt.dto.IntPropertyName;
+import be.seeseepuff.hobo.mqtt.dto.IntPropertyUpdate;
 import be.seeseepuff.hobo.mqtt.model.Discovery;
-import be.seeseepuff.hobo.mqtt.model.IntPropertyRequest;
 import be.seeseepuff.hobo.mqtt.model.State;
+import be.seeseepuff.hobo.mqtt.sm.InitialState;
+import be.seeseepuff.hobo.mqtt.sm.StateMachine;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.quarkus.runtime.StartupEvent;
+import io.smallrye.graphql.client.GraphQLClient;
+import io.smallrye.graphql.client.dynamic.api.DynamicGraphQLClient;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.reactive.messaging.annotations.Broadcast;
+import io.smallrye.reactive.messaging.mqtt.MqttMessage;
 import io.smallrye.reactive.messaging.mqtt.ReceivingMqttMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.reactive.messaging.Channel;
+import org.eclipse.microprofile.reactive.messaging.Emitter;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.eclipse.microprofile.reactive.messaging.Message;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import java.net.ConnectException;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 
 @ApplicationScoped
 @Slf4j
@@ -32,35 +43,42 @@ public class MqttClient
 	HoboApi hoboApi;
 
 	@Inject
+	@GraphQLClient("hobo")
+	DynamicGraphQLClient dynamicHoboApi;
+
+	@Inject
 	ObjectMapper mapper;
 
 	@ConfigProperty(name = "hobo.owner")
 	String owner;
 
+	@Broadcast
+	@Channel("state")
+	Emitter<String> mqttEmitter;
+
 	private final Map<String, Long> topicToId = new HashMap<>();
 
-	public void onStartup(@Observes StartupEvent e)
-	{
-		hoboApi.intPropertyRequestsForOwner(owner)
-//			.onSubscription().invoke(() -> log.info("Subscribing"))
-//			.onItem().invoke(() -> log.info("Got an item"))
-			.onCompletion().invoke(() -> log.warn("Property requests completed"))
-			.onFailure().retry().withBackOff(Duration.ofSeconds(5)).indefinitely()
-			.subscribe().asStream()
-			.forEach(this::onRequest);
-	}
+	private final Map<Long, StateMachine> stateMachines = new HashMap<>();
 
-//	@Outgoing("propertyRequest")
-//	public Multi<IntPropertyRequest> requests()
+//	public void onStartup(@Observes StartupEvent e)
 //	{
-//		log.warn("Create request");
-//		return Multi.createFrom().empty();
+//		hoboApi.intPropertyUpdates(PropertyUpdateFilter.withOwner(owner))
+//			.onCompletion().invoke(() -> log.warn("Property requests completed"))
+//			.onFailure().retry().withBackOff(Duration.ofSeconds(5)).indefinitely()
+//			.onItem().call(this::onRequest)
+//			.subscribe().with(item -> {});
+//			//.subscribe().asStream()
+//			//.forEach(this::onRequest);
 //	}
 
-	private void onRequest(IntPropertyRequest request)
+	private Uni<Void> onRequest(IntPropertyUpdate update)
 	{
-		log.info("Got property request for {}", request.getName());
-//		return Uni.createFrom().voidItem();
+		log.info("Got property update requests for device {}", update.getDevice());
+		for (IntProperty property : update.getIntProperties())
+		{
+			log.info("Updating property {}", property.getName());
+		}
+		return Uni.createFrom().voidItem();
 	}
 
 	@Incoming("discovery")
@@ -98,21 +116,39 @@ public class MqttClient
 
 	private Uni<DeviceId> getOrCreateDevice(String mac)
 	{
-		return hoboApi.getDeviceByOwnerAndName(owner, mac)
-			.onFailure().recoverWithUni(() -> hoboApi.createDevice(owner, mac));
+		return hoboApi.getOrCreateDevice(owner, mac);
 	}
 
 	private Uni<Void> reportProperties(long deviceId, Discovery discovery)
 	{
 		return reportProperty(deviceId, "protocol_version", discovery.getProtocolVersion())
-			.onFailure(ConnectException.class).retry().withBackOff(Duration.ofSeconds(3)).atMost(10);
+			.onFailure(ConnectException.class).retry().withBackOff(Duration.ofSeconds(3)).atMost(10)
+			.replaceWithVoid();
 	}
 
-	private Uni<Void> reportProperty(long deviceId, String property, int value)
+	private Uni<List<IntPropertyName>> reportProperty(long deviceId, String property, int value)
 	{
 		log.info("Reporting property {} with value {} for device {}", property, value, deviceId);
-		return hoboApi.reportIntProperty(deviceId, property, value).replaceWithVoid()
-			.onFailure(ConnectException.class).retry().withBackOff(Duration.ofSeconds(3)).atMost(10);
+		return hoboApi.updateIntProperty(deviceId, IntPropertyUpdateRequest.withRequest(property, value));
+	}
+
+	private void requestColor(long deviceId)
+	{
+		mqttEmitter.send(MqttMessage.of("cmnd/(topic)/Color", ""));
+	}
+
+	private void executeStateMachine(long deviceId, Function<StateMachine, StateMachine> update)
+	{
+		StateMachine sm = getStateMachine(deviceId);
+		sm = update.apply(sm);
+		stateMachines.put(deviceId, sm);
+	}
+
+	private StateMachine getStateMachine(long deviceId)
+	{
+		if (!stateMachines.containsKey(deviceId))
+			stateMachines.put(deviceId, new InitialState());
+		return stateMachines.get(deviceId);
 	}
 
 	private <T> Uni<Void> ack(Message<T> message)

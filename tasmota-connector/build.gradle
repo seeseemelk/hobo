@@ -1,5 +1,5 @@
 plugins {
-    id 'hobo.java-conventions'
+    id 'hobo.quarkus-conventions'
 }
 
 dependencies {

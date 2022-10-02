@@ -1,8 +1,7 @@
 package be.seeseepuff.hobo.services;
 
-import be.seeseepuff.hobo.controllers.models.IntPropertyRequest;
 import be.seeseepuff.hobo.exceptions.DeviceExistsException;
-import be.seeseepuff.hobo.models.IntPropertyUpdate;
+import be.seeseepuff.hobo.graphql.requests.IntPropertyUpdateRequest;
 import be.seeseepuff.hobo.models.StoredDevice;
 import be.seeseepuff.hobo.models.StoredIntProperty;
 import be.seeseepuff.hobo.repositories.DeviceRepository;
@@ -15,9 +14,10 @@ import lombok.Getter;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.persistence.NoResultException;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.DoubleStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @ApplicationScoped
 public class DeviceService
@@ -29,7 +29,7 @@ public class DeviceService
 	IntPropertyRepository intPropertyRepository;
 
 	@Getter
-	private final BroadcastProcessor<IntPropertyUpdate> intPropertyRequests = BroadcastProcessor.create();
+	private final BroadcastProcessor<be.seeseepuff.hobo.models.IntPropertyUpdate> intPropertyRequests = BroadcastProcessor.create();
 
 	public Uni<StoredDevice> createDevice(StoredDevice device)
 	{
@@ -58,28 +58,27 @@ public class DeviceService
 		return intPropertyRepository.getProperty(device, propertyName);
 	}
 
-	private Uni<StoredIntProperty> requestIntProperty(StoredDevice device, String propertyName, int requestedValue)
+	private Uni<StoredIntProperty> updateIntProperty(StoredDevice device, IntPropertyUpdateRequest update)
 	{
-		return intPropertyRepository.getOrCreate(device, propertyName)
-			.invoke(property -> property.setRequested(requestedValue));
+		return intPropertyRepository.getOrCreate(device, update.getProperty())
+			.invoke(property ->
+			{
+				if (update.getRequestedValue() != null)
+					property.setRequested(update.getRequestedValue());
+				if (update.getReportedValue() != null)
+					property.setReported(update.getReportedValue());
+			});
 	}
-//
-//	public Uni<StoredIntProperty> reportIntProperty(StoredDevice device, String propertyName, int reportedValue)
-//	{
-//		return intPropertyRepository.getOrCreate(device, propertyName)
-//			.invoke(property -> property.setReported(reportedValue))
-//			.invoke(this::notifyChange);
-//	}
 
 	private void notifyChanges(List<StoredIntProperty> properties)
 	{
-		Map<StoredDevice, IntPropertyUpdate> propertyMap = new HashMap<>();
+		Map<StoredDevice, be.seeseepuff.hobo.models.IntPropertyUpdate> propertyMap = new HashMap<>();
 		for (StoredIntProperty property : properties)
 		{
 			StoredDevice device = property.getDevice();
 			if (!propertyMap.containsKey(device))
 			{
-				IntPropertyUpdate update = new IntPropertyUpdate();
+				be.seeseepuff.hobo.models.IntPropertyUpdate update = new be.seeseepuff.hobo.models.IntPropertyUpdate();
 				update.setDevice(device);
 				update.setIntProperties(new ArrayList<>());
 				propertyMap.put(device, update);
@@ -87,7 +86,7 @@ public class DeviceService
 			propertyMap.get(device).getIntProperties().add(property);
 		}
 
-		for (IntPropertyUpdate update : propertyMap.values())
+		for (be.seeseepuff.hobo.models.IntPropertyUpdate update : propertyMap.values())
 			intPropertyRequests.onNext(update);
 	}
 
@@ -116,11 +115,11 @@ public class DeviceService
 			.onFailure(NoResultException.class).recoverWithUni(() -> createDevice(device));
 	}
 
-	public Uni<List<StoredIntProperty>> requestIntProperties(StoredDevice device, List<IntPropertyRequest> requests)
+	public Uni<List<StoredIntProperty>> updateIntProperties(StoredDevice device, List<IntPropertyUpdateRequest> updates)
 	{
-		return Multi.createFrom().iterable(requests)
-			.onItem().transformToUniAndMerge(request -> requestIntProperty(device, request.getProperty(), request.getValue()))
+		return Multi.createFrom().iterable(updates)
+			.onItem().transformToUniAndMerge(update -> updateIntProperty(device, update))
 			.collect().asList()
-			.invoke(properties -> notifyChanges(properties));
+			.invoke(this::notifyChanges);
 	}
 }

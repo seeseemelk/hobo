@@ -10,5 +10,6 @@ pluginManagement {
 }
 
 rootProject.name = 'hobo'
+include 'common'
 include 'core'
 include 'tasmota-connector'

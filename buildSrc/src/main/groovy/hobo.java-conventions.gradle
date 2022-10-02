@@ -1,7 +1,7 @@
 plugins {
     id 'java'
-    id 'io.quarkus'
     id 'io.freefair.lombok'
+    id 'io.quarkus'
 }
 
 repositories {
@@ -11,10 +11,12 @@ repositories {
 
 dependencies {
     implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
+    implementation 'org.eclipse.microprofile.graphql:microprofile-graphql-api:1.1.0'
     testImplementation 'io.quarkus:quarkus-junit5'
     testImplementation 'io.quarkus:quarkus-junit5-mockito'
     testImplementation 'org.hamcrest:hamcrest:2.2'
 }
+
 
 group 'be.seeseepuff'
 version 'SNAPSHOT'

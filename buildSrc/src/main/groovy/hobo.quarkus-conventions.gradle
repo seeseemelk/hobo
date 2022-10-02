@@ -1,0 +1,7 @@
+plugins {
+    id 'hobo.java-conventions'
+}
+
+dependencies {
+    implementation project(':common')
+}
