@@ -23,15 +23,28 @@ public class IntPropertyUpdateRequest
 	@Description("When set to true, the reported and requested value will be set to null if no value is provided for them.")
 	private boolean unset = false;
 
-	public static List<IntPropertyUpdateRequest> withRequest(String property, int value)
+	public static IntPropertyUpdateRequest withRequest(String property, int value)
 	{
 		IntPropertyUpdateRequest request = new IntPropertyUpdateRequest();
 		request.setProperty(property);
 		request.setRequestedValue(value);
-		return List.of(request);
+		return request;
 	}
 
-	public static List<IntPropertyUpdateRequest> withReport(String property, int value)
+	public static List<IntPropertyUpdateRequest> withRequests(String property, int value)
+	{
+		return List.of(withRequest(property, value));
+	}
+
+	public static IntPropertyUpdateRequest withReport(String property, int value)
+	{
+		IntPropertyUpdateRequest request = new IntPropertyUpdateRequest();
+		request.setProperty(property);
+		request.setReportedValue(value);
+		return request;
+	}
+
+	public static List<IntPropertyUpdateRequest> withReports(String property, int value)
 	{
 		IntPropertyUpdateRequest request = new IntPropertyUpdateRequest();
 		request.setProperty(property);
