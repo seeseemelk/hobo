@@ -3,19 +3,19 @@ package be.seeseepuff.hobo.mqtt.sm;
 import be.seeseepuff.hobo.mqtt.sm.events.DiscoverEvent;
 import io.smallrye.mutiny.Uni;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Data
+@RequiredArgsConstructor
 @Slf4j
-public class InitialState implements StateMachine
+public class IdleState implements StateMachine
 {
-	private final Context context = new Context();
+	private final Context context;
 
 	@Override
 	public Uni<StateMachine> onEvent(DiscoverEvent event)
 	{
-		log.info("Discover event");
-		StateMachine newState = new IdleState(context);
-		return newState.onEvent(event);
+		return StateMachine.super.onEvent(event);
 	}
 }
