@@ -1,6 +1,6 @@
 package be.seeseepuff.hobo.mqtt.dto;
 
-import be.seeseepuff.hobo.graphql.requests.IntPropertyUpdateRequest;
+import be.seeseepuff.hobo.graphql.requests.PropertyUpdateRequest;
 import lombok.Data;
 
 @Data
@@ -10,18 +10,18 @@ public class IntProperty
 	private Integer requested;
 	private Integer reported;
 
-	public IntPropertyUpdateRequest unsetRequested()
+	public PropertyUpdateRequest<Integer> unsetRequested()
 	{
-		IntPropertyUpdateRequest request = new IntPropertyUpdateRequest();
+		PropertyUpdateRequest request = new PropertyUpdateRequest();
 		request.setProperty(name);
 		request.setUnset(true);
 		request.setReportedValue(reported);
 		return request;
 	}
 
-	public IntPropertyUpdateRequest unsetReported()
+	public PropertyUpdateRequest unsetReported()
 	{
-		IntPropertyUpdateRequest request = new IntPropertyUpdateRequest();
+		PropertyUpdateRequest request = new PropertyUpdateRequest();
 		request.setProperty(name);
 		request.setUnset(true);
 		request.setRequestedValue(requested);

@@ -10,8 +10,8 @@ import javax.persistence.Entity;
 @Getter
 @Setter
 @ToString
-public class StoredIntProperty extends StoredProperty<Integer>
+public class StoredStringProperty extends StoredProperty<String>
 {
-	private Integer requested;
-	private Integer reported;
+	private String requested;
+	private String reported;
 }

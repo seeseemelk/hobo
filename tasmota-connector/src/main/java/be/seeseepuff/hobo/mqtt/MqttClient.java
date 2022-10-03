@@ -1,10 +1,9 @@
 package be.seeseepuff.hobo.mqtt;
 
-import be.seeseepuff.hobo.graphql.requests.IntPropertyUpdateRequest;
 import be.seeseepuff.hobo.graphql.requests.PropertyUpdateFilter;
+import be.seeseepuff.hobo.graphql.requests.PropertyUpdateRequest;
 import be.seeseepuff.hobo.mqtt.dto.DeviceId;
 import be.seeseepuff.hobo.mqtt.dto.IntProperty;
-import be.seeseepuff.hobo.mqtt.dto.IntPropertyName;
 import be.seeseepuff.hobo.mqtt.dto.IntPropertyUpdate;
 import be.seeseepuff.hobo.mqtt.model.Discovery;
 import be.seeseepuff.hobo.mqtt.model.Result;
@@ -39,10 +38,6 @@ public class MqttClient
 	@Inject
 	HoboApi hoboApi;
 
-//	@Inject
-//	@GraphQLClient("hobo")
-//	DynamicGraphQLClient dynamicHoboApi;
-
 	@Inject
 	ObjectMapper mapper;
 
@@ -61,8 +56,8 @@ public class MqttClient
 	{
 		hoboApi.intPropertyUpdates(PropertyUpdateFilter.withOwner(owner))
 			.onCompletion().invoke(() -> log.warn("Property requests completed"))
-			.onFailure().retry().withBackOff(Duration.ofSeconds(5)).indefinitely()
 			.onItem().call(this::onRequest)
+			.onFailure().retry().withBackOff(Duration.ofSeconds(5)).indefinitely()
 			.subscribe().with(item -> {});
 			//.subscribe().asStream()
 			//.forEach(this::onRequest);
@@ -72,7 +67,7 @@ public class MqttClient
 	{
 		log.info("Got property update requests for device {}", update.getDevice());
 		Context context = getContext(update.getDevice().getId());
-		List<IntPropertyUpdateRequest> requests = new ArrayList<>();
+		List<PropertyUpdateRequest<Integer>> requests = new ArrayList<>();
 		Integer red = null;
 		Integer green = null;
 		Integer blue = null;
@@ -110,7 +105,7 @@ public class MqttClient
 			String topic = String.format("cmnd/%s/Color", context.getTopic());
 			mqttEmitter.send(MqttMessage.of(topic, color));
 		}
-		return updateProperties(update.getDevice().getId(), requests);
+		return updateProperties(context, requests);
 	}
 
 	@Incoming("discovery")
@@ -130,11 +125,10 @@ public class MqttClient
 				context.setTopic(discovery.getTopic());
 				return context;
 			})
-			.onItem().call(context -> reportProperties(context))
+			.onItem().call(this::reportProperties)
 			.onItem().invoke(this::requestColor)
 			.onItem().transformToUni(id -> ack(message))
 			.onFailure(ConnectException.class).retry().withBackOff(Duration.ofSeconds(3)).atMost(10);
-//			.subscribeAsCompletionStage();
 	}
 
 	@Incoming("state")
@@ -185,34 +179,31 @@ public class MqttClient
 
 	private Uni<Void> reportProperties(Context context)
 	{
-		List<IntPropertyUpdateRequest> requests = new ArrayList<>();
+		List<PropertyUpdateRequest<Integer>> requests = new ArrayList<>();
 		if (context.getRed() != null)
-			requests.add(IntPropertyUpdateRequest.withReport("red", context.getRed()));
+			requests.add(PropertyUpdateRequest.withReport("red", context.getRed()));
 		if (context.getGreen() != null)
-			requests.add(IntPropertyUpdateRequest.withReport("green", context.getGreen()));
+			requests.add(PropertyUpdateRequest.withReport("green", context.getGreen()));
 		if (context.getBlue() != null)
-			requests.add(IntPropertyUpdateRequest.withReport("blue", context.getBlue()));
+			requests.add(PropertyUpdateRequest.withReport("blue", context.getBlue()));
 		if (context.getWhite() != null)
-			requests.add(IntPropertyUpdateRequest.withReport("white", context.getWhite()));
+			requests.add(PropertyUpdateRequest.withReport("white", context.getWhite()));
 
-		String propertyNames = requests.stream()
-				.map(IntPropertyUpdateRequest::getProperty)
-				.collect(Collectors.joining(", "));
-		return updateProperties(context.getDeviceId(), requests);
+		return updateProperties(context, requests);
 	}
 
-	private Uni<Void> updateProperties(long deviceId, List<IntPropertyUpdateRequest> requests)
+	private Uni<Void> updateProperties(Context context, List<PropertyUpdateRequest<Integer>> requests)
 	{
 		if (requests.isEmpty())
 			return Uni.createFrom().voidItem();
 		else
-			return hoboApi.updateIntProperty(deviceId, requests).replaceWithVoid();
-	}
-
-	private Uni<List<IntPropertyName>> reportProperty(long deviceId, String property, int value)
-	{
-		log.info("Reporting property {} with value {} for device {}", property, value, deviceId);
-		return hoboApi.updateIntProperty(deviceId, IntPropertyUpdateRequest.withRequests(property, value));
+		{
+			String propertyNames = requests.stream()
+				.map(PropertyUpdateRequest::getProperty)
+				.collect(Collectors.joining(", "));
+			log.info("Updating properties {} for device {}", propertyNames, context.getTopic());
+			return hoboApi.updateIntProperty(context.getDeviceId(), requests).replaceWithVoid();
+		}
 	}
 
 	private void requestColor(Context context)
