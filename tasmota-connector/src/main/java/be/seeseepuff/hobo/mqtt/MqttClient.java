@@ -1,6 +1,7 @@
 package be.seeseepuff.hobo.mqtt;
 
 import be.seeseepuff.hobo.graphql.requests.PropertyFloatUpdateRequest;
+import be.seeseepuff.hobo.graphql.requests.PropertyStringUpdateRequest;
 import be.seeseepuff.hobo.graphql.requests.PropertyUpdateFilter;
 import be.seeseepuff.hobo.mqtt.dto.DeviceId;
 import be.seeseepuff.hobo.mqtt.dto.Property;
@@ -25,7 +26,6 @@ import org.eclipse.microprofile.reactive.messaging.Message;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
-import java.net.ConnectException;
 import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -76,40 +76,43 @@ public class MqttClient
 
 		List<PropertyFloatUpdateRequest> requests = new ArrayList<>();
 
-		for (Property<Float> property : update.getFloatProperties())
+		if (update.getFloatProperties() != null)
 		{
-			boolean needsUpdate = property.getRequested() != null && !property.getRequested().equals(property.getReported());
-			log.info("Testing property {} to {} (from {}) (needsUpdate={})", property.getName(), property.getRequested(), property.getReported(), needsUpdate);
-			switch (property.getName())
+			for (Property<Float> property : update.getFloatProperties())
 			{
-			case "red":
-				if (needsUpdate)
+				boolean needsUpdate = property.getRequested() != null && !property.getRequested().equals(property.getReported());
+				log.info("Testing property {} to {} (from {}) (needsUpdate={})", property.getName(), property.getRequested(), property.getReported(), needsUpdate);
+				switch (property.getName())
 				{
-					color.setRed(property.getRequested());
-					requests.add(PropertyFloatUpdateRequest.withRequest("red", color.getRed()));
+					case "red":
+						if (needsUpdate)
+						{
+							color.setRed(property.getRequested());
+							requests.add(PropertyFloatUpdateRequest.withRequest("red", color.getRed()));
+						}
+						break;
+					case "green":
+						if (needsUpdate)
+						{
+							color.setGreen(property.getRequested());
+							requests.add(PropertyFloatUpdateRequest.withRequest("green", color.getGreen()));
+						}
+						break;
+					case "blue":
+						if (needsUpdate)
+						{
+							color.setBlue(property.getRequested());
+							requests.add(PropertyFloatUpdateRequest.withRequest("blue", color.getBlue()));
+						}
+						break;
+					case "white":
+						if (needsUpdate)
+						{
+							color.setWhite(property.getRequested());
+							requests.add(PropertyFloatUpdateRequest.withRequest("white", color.getWhite()));
+						}
+						break;
 				}
-				break;
-			case "green":
-				if (needsUpdate)
-				{
-					color.setGreen(property.getRequested());
-					requests.add(PropertyFloatUpdateRequest.withRequest("green", color.getGreen()));
-				}
-				break;
-			case "blue":
-				if (needsUpdate)
-				{
-					color.setBlue(property.getRequested());
-					requests.add(PropertyFloatUpdateRequest.withRequest("blue", color.getBlue()));
-				}
-				break;
-			case "white":
-				if (needsUpdate)
-				{
-					color.setWhite(property.getRequested());
-					requests.add(PropertyFloatUpdateRequest.withRequest("white", color.getWhite()));
-				}
-				break;
 			}
 		}
 
@@ -139,33 +142,44 @@ public class MqttClient
 		log.info("Received topic: {}, payload: {}", message.getTopic(), payload);
 		Discovery discovery = mapper.readValue(payload, Discovery.class);
 		log.info("Discovered {}", discovery);
-		return getOrCreateDevice(discovery.getTopic())
+		return getOrCreateDevice(discovery.getMac())
 			.onItem().transform(id ->
 			{
 				topicToId.put(discovery.getTopic(), id);
 				Context context = getContext(id);
 				context.setDeviceId(id);
 				context.setTopic(discovery.getTopic());
+				context.setMac(discovery.getMac());
+				context.setIp(discovery.getIp());
 				return context;
 			})
-			.onItem().call(this::reportProperties)
+			.onItem().call(
+				context -> Uni.combine().all().unis(
+					reportFloatProperties(context),
+					reportStringProperties(context)
+				).asTuple().replaceWithVoid())
 			.onItem().invoke(this::requestColor)
 			.onItem().transformToUni(id -> ack(message))
-			.onFailure(ConnectException.class).retry().withBackOff(Duration.ofSeconds(3)).atMost(10);
+			.onFailure().retry().withBackOff(Duration.ofSeconds(3)).atMost(10);
 	}
 
 	@Incoming("state")
 	public Uni<Void> onStateData(ReceivingMqttMessage message) throws JsonProcessingException
 	{
 		String topic = message.getTopic().split("/")[1];
-		long id = Objects.requireNonNull(topicToId.get(topic), () -> "No id found for topic " + topic);
+		Long id = topicToId.get(topic);
+		if (id == null)
+		{
+			log.error("No id mapping found for topic {}", topic);
+			return ack(message);
+		}
 		String payload = new String(message.getPayload());
 		State state = mapper.readValue(payload, State.class);
 
 		Context context = getContext(id);
 		context.setColor(Color.fromString(state.getColor()));
 
-		return reportProperties(context).replaceWith(ack(message));
+		return reportFloatProperties(context).replaceWith(ack(message));
 	}
 
 	@Incoming("stat")
@@ -180,25 +194,27 @@ public class MqttClient
 			Result result = mapper.readValue(payload, Result.class);
 			if (result.getColor() != null)
 			{
-				return getContext(device)
-					.chain(context ->
-					{
-						context.setColor(Color.fromString(result.getColor()));
-						return reportProperties(context);
-					})
-					.chain(() -> ack(message));
+				Optional<Context> context = getContext(device);
+				if (context.isEmpty())
+				{
+					log.error("Could not get context for device with topic {}", device);
+					return ack(message);
+				}
+
+				context.get().setColor(Color.fromString(result.getColor()));
+				return reportFloatProperties(context.get()).chain(() -> ack(message));
 			}
 		}
 		return ack(message);
 	}
 
-	private Uni<Long> getOrCreateDevice(String topic)
+	private Uni<Long> getOrCreateDevice(String mac)
 	{
-		return hoboApi.getOrCreateDevice(owner, topic)
+		return hoboApi.getOrCreateDevice(owner, mac)
 			.map(DeviceId::getId);
 	}
 
-	private Uni<Void> reportProperties(Context context)
+	private Uni<Void> reportFloatProperties(Context context)
 	{
 		List<PropertyFloatUpdateRequest> requests = new ArrayList<>();
 		Color color = context.getColor();
@@ -210,8 +226,15 @@ public class MqttClient
 			requests.add(PropertyFloatUpdateRequest.withReport("blue", color.getBlue()));
 		if (color.getWhite() != null)
 			requests.add(PropertyFloatUpdateRequest.withReport("white", color.getWhite()));
-
 		return updateFloatProperties(context, requests);
+	}
+
+	private Uni<Void> reportStringProperties(Context context)
+	{
+		List<PropertyStringUpdateRequest> requests = new ArrayList<>();
+		if (context.getIp() != null)
+			requests.add(PropertyStringUpdateRequest.withReport("ip", context.getIp()));
+		return updateStringProperties(context, requests);
 	}
 
 	private Uni<Void> updateFloatProperties(Context context, List<PropertyFloatUpdateRequest> requests)
@@ -228,6 +251,20 @@ public class MqttClient
 		}
 	}
 
+	private Uni<Void> updateStringProperties(Context context, List<PropertyStringUpdateRequest> requests)
+	{
+		if (requests.isEmpty())
+			return Uni.createFrom().voidItem();
+		else
+		{
+			String propertyNames = requests.stream()
+				.map(PropertyStringUpdateRequest::getProperty)
+				.collect(Collectors.joining(", "));
+			log.info("Updating properties {} for device {}", propertyNames, context.getTopic());
+			return hoboApi.updateStringProperties(context.getDeviceId(), requests).replaceWithVoid();
+		}
+	}
+
 	private void requestColor(Context context)
 	{
 		log.info("Requesting color of {}", context.getTopic());
@@ -235,10 +272,9 @@ public class MqttClient
 		mqttEmitter.send(MqttMessage.of(topic, ""));
 	}
 
-	private Uni<Long> getDeviceId(String topic)
+	private Optional<Long> getDeviceId(String topic)
 	{
-		return Uni.createFrom().item(topicToId.get(topic))
-			.onItem().ifNull().switchTo(() -> getOrCreateDevice(topic));
+		return Optional.ofNullable(topicToId.get(topic));
 	}
 
 	private Context getContext(long deviceId)
@@ -252,7 +288,7 @@ public class MqttClient
 		return contexts.get(deviceId);
 	}
 
-	private Uni<Context> getContext(String topic)
+	private Optional<Context> getContext(String topic)
 	{
 		return getDeviceId(topic).map(this::getContext);
 	}
