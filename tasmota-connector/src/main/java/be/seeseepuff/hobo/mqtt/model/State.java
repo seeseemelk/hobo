@@ -12,6 +12,8 @@ public class State
 	private long uptime;
 	@JsonProperty("Channel")
 	private List<Integer> channels;
+	@JsonProperty("Color")
+	private String color;
 
 	public int getRed()
 	{

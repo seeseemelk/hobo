@@ -4,9 +4,7 @@ import be.seeseepuff.hobo.dto.Device;
 import be.seeseepuff.hobo.dto.Property;
 import be.seeseepuff.hobo.exceptions.DeviceNotFoundException;
 import be.seeseepuff.hobo.exceptions.InvalidFilterException;
-import be.seeseepuff.hobo.graphql.requests.DeviceFilter;
-import be.seeseepuff.hobo.graphql.requests.PropertyUpdateFilter;
-import be.seeseepuff.hobo.graphql.requests.PropertyUpdateRequest;
+import be.seeseepuff.hobo.graphql.requests.*;
 import be.seeseepuff.hobo.models.PropertyUpdate;
 import be.seeseepuff.hobo.models.StoredDevice;
 import be.seeseepuff.hobo.models.StoredProperty;
@@ -74,25 +72,25 @@ public class GraphController
 	}
 
 	@Mutation
-	public Uni<List<Property<Integer>>> updateIntProperty(long deviceId, List<PropertyUpdateRequest<Integer>> updates)
+	public Uni<List<Property<Integer>>> updateIntProperties(long deviceId, List<PropertyIntUpdateRequest> updates)
 	{
 		return updateProperty(deviceId, device -> deviceService.updateIntProperties(device, updates));
 	}
 
 	@Mutation
-	public Uni<List<Property<String>>> updateStringProperty(long deviceId, List<PropertyUpdateRequest<String>> updates)
+	public Uni<List<Property<String>>> updateStringProperties(long deviceId, List<PropertyStringUpdateRequest> updates)
 	{
 		return updateProperty(deviceId, device -> deviceService.updateStringProperties(device, updates));
 	}
 
 	@Mutation
-	public Uni<List<Property<Float>>> updateFloatProperty(long deviceId, List<PropertyUpdateRequest<Float>> updates)
+	public Uni<List<Property<Float>>> updateFloatProperties(long deviceId, List<PropertyFloatUpdateRequest> updates)
 	{
 		return updateProperty(deviceId, device -> deviceService.updateFloatProperties(device, updates));
 	}
 
 	@Mutation
-	public Uni<List<Property<Boolean>>> updateBoolProperty(long deviceId, List<PropertyUpdateRequest<Boolean>> updates)
+	public Uni<List<Property<Boolean>>> updateBoolProperties(long deviceId, List<PropertyBoolUpdateRequest> updates)
 	{
 		return updateProperty(deviceId, device -> deviceService.updateBoolProperties(device, updates));
 	}

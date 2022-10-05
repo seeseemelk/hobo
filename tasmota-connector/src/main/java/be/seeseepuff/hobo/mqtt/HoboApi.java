@@ -1,11 +1,12 @@
 package be.seeseepuff.hobo.mqtt;
 
 import be.seeseepuff.hobo.graphql.requests.DeviceFilter;
-import be.seeseepuff.hobo.graphql.requests.PropertyUpdateRequest;
+import be.seeseepuff.hobo.graphql.requests.PropertyFloatUpdateRequest;
+import be.seeseepuff.hobo.graphql.requests.PropertyIntUpdateRequest;
 import be.seeseepuff.hobo.graphql.requests.PropertyUpdateFilter;
 import be.seeseepuff.hobo.mqtt.dto.DeviceId;
-import be.seeseepuff.hobo.mqtt.dto.IntPropertyName;
-import be.seeseepuff.hobo.mqtt.dto.IntPropertyUpdate;
+import be.seeseepuff.hobo.mqtt.dto.PropertyName;
+import be.seeseepuff.hobo.mqtt.dto.PropertyUpdate;
 import io.smallrye.graphql.api.Subscription;
 import io.smallrye.graphql.client.typesafe.api.GraphQLClientApi;
 import io.smallrye.mutiny.Multi;
@@ -25,8 +26,11 @@ public interface HoboApi
 	Uni<DeviceId> getOrCreateDevice(String owner, String name);
 
 	@Mutation
-	Uni<List<IntPropertyName>> updateIntProperty(long deviceId, List<PropertyUpdateRequest<Integer>> updates);
+	Uni<List<PropertyName>> updateIntProperties(long deviceId, List<PropertyIntUpdateRequest> updates);
+
+	@Mutation
+	Uni<List<PropertyName>> updateFloatProperties(long deviceId, List<PropertyFloatUpdateRequest> updates);
 
 	@Subscription
-	Multi<IntPropertyUpdate> intPropertyUpdates(PropertyUpdateFilter filter);
+	Multi<PropertyUpdate> propertyUpdates(PropertyUpdateFilter filter);
 }
