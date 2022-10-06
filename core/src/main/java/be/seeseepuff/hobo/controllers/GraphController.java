@@ -106,7 +106,7 @@ public class GraphController
 			if (filter.getOwner() != null)
 				result = result.filter(property -> filter.getOwner().equals(property.getDevice().getOwner()));
 		}
-		return result;
+		return result.onOverflow().dropPreviousItems();
 	}
 
 	public Uni<List<Property<Integer>>> intProperties(

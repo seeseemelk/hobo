@@ -36,6 +36,6 @@ public abstract class PropertyRepository<T> implements PanacheRepository<T>
 
 	public Uni<T> insertProperty(T property)
 	{
-		return persist(property);
+		return persistAndFlush(property);
 	}
 }

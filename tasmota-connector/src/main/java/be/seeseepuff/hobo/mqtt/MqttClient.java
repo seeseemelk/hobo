@@ -11,6 +11,7 @@ import be.seeseepuff.hobo.mqtt.model.Result;
 import be.seeseepuff.hobo.mqtt.model.State;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.quarkus.arc.Arc;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.reactive.messaging.annotations.Broadcast;
@@ -53,6 +54,7 @@ public class MqttClient
 
 	public void onStartup(@Observes StartupEvent e)
 	{
+		Arc.initialize();
 		subscribeToChanges();
 	}
 
@@ -121,11 +123,9 @@ public class MqttClient
 		{
 			log.info("Color needs to be changed");
 			color.copyMissingFrom(context.getColor());
-
-			String rgbw = color.toString();
-			log.info("Setting color of {} to {}", context.getTopic(), rgbw);
-			String topic = String.format("cmnd/%s/Color", context.getTopic());
-			mqttEmitter.send(MqttMessage.of(topic, rgbw));
+			context.setNewColor(color);
+			context.setUpdateColor(true);
+			updateContext(context);
 		}
 		else
 			log.info("Color needs no change");
@@ -133,6 +133,22 @@ public class MqttClient
 		log.info("Updating float properties");
 		updateFloatProperties(context, requests).subscribe().with(list -> {});
 		log.info("Finished");
+	}
+
+	private void updateContext(Context context)
+	{
+		if (context.isWaitingForResult())
+			return;
+
+		if (context.isUpdateColor())
+		{
+			context.setUpdateColor(false);
+			context.setWaitingForResult(true);
+			String rgbw = context.getNewColor().toString();
+			log.info("Setting color of {} to {}", context.getTopic(), rgbw);
+			String topic = String.format("cmnd/%s/Color", context.getTopic());
+			mqttEmitter.send(MqttMessage.of(topic, rgbw));
+		}
 	}
 
 	@Incoming("discovery")
@@ -188,21 +204,28 @@ public class MqttClient
 		String[] topicParts = message.getTopic().split("/");
 		String device = topicParts[1];
 		String endpoint = topicParts[2];
-		if (endpoint.equals("RESULT"))
+
+		if (endpoint.equals("COLOR"))
 		{
 			String payload = new String(message.getPayload());
 			Result result = mapper.readValue(payload, Result.class);
+			if (result.getColor() == null)
+				return ack(message);
+
+			Optional<Context> contextResult = getContext(device);
+			if (contextResult.isEmpty())
+			{
+				log.error("Could not get context for device with topic {}", device);
+				return ack(message);
+			}
+
+			Context context = contextResult.get();
+			context.setWaitingForResult(false);
+			updateContext(context);
 			if (result.getColor() != null)
 			{
-				Optional<Context> context = getContext(device);
-				if (context.isEmpty())
-				{
-					log.error("Could not get context for device with topic {}", device);
-					return ack(message);
-				}
-
-				context.get().setColor(Color.fromString(result.getColor()));
-				return reportFloatProperties(context.get()).chain(() -> ack(message));
+				context.setColor(Color.fromString(result.getColor()));
+				return reportFloatProperties(context).chain(() -> ack(message));
 			}
 		}
 		return ack(message);

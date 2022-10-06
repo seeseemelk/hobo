@@ -10,4 +10,8 @@ public class Context
 	private String mac;
 	private String ip;
 	private Color color = new Color();
+	private Color newColor = new Color();
+
+	private boolean waitingForResult = false;
+	private boolean updateColor = false;
 }

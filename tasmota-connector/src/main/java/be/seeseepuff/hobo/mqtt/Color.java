@@ -2,8 +2,6 @@ package be.seeseepuff.hobo.mqtt;
 
 import lombok.Data;
 
-import java.util.Objects;
-
 @Data
 public class Color
 {
@@ -59,15 +57,18 @@ public class Color
 
 	public void copyMissingFrom(Color color)
 	{
-		red = Objects.requireNonNullElse(red, color.red);
-		green = Objects.requireNonNullElse(green, color.green);
-		blue = Objects.requireNonNullElse(blue, color.blue);
-		white = Objects.requireNonNullElse(white, color.white);
+		if (color != null)
+		{
+			red = getValue(red, color.red);
+			green = getValue(green, color.green);
+			blue = getValue(blue, color.blue);
+			white = getValue(white, color.white);
+		}
 	}
 
 	public String toString()
 	{
-		return String.format("%02X%02X%02X%02X", getAsInt(red), getAsInt(blue), getAsInt(green), getAsInt(white));
+		return String.format("%02X%02X%02X%02X", getAsInt(red), getAsInt(green), getAsInt(blue), getAsInt(white));
 	}
 
 	public static Color fromString(String rgbw)
@@ -92,5 +93,15 @@ public class Color
 			return 0;
 		else
 			return Math.round(color * 255f);
+	}
+
+	private static Float getValue(Float a, Float b)
+	{
+		if (a != null)
+			return a;
+		else if (b != null)
+			return b;
+		else
+			return 0f;
 	}
 }
