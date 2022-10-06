@@ -32,10 +32,9 @@ public class MigrationService
 	@ConfigProperty(name = "todo.migration.files")
 	List<String> files;
 
-	public void runFlywayMigration(@Observes StartupEvent event, FlywayContainer container)
+	public void runFlywayMigration(@Observes StartupEvent event)
 	{
 		log.info("Initialising flyway...");
-		log.info("Got container: {}", container.);
 		QuarkusPathLocationScanner.setApplicationMigrationFiles(files.stream()
 			.map(file -> "db/migration/" + file)
 			.collect(Collectors.toList()));

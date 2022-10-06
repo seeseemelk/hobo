@@ -5,11 +5,9 @@ CREATE TABLE storeddevice
 	id BIGINT NOT NULL,
 	owner VARCHAR(255),
 	name VARCHAR(255),
-	CONSTRAINT pk_storeddevice PRIMARY KEY (id)
+	CONSTRAINT pk_storeddevice PRIMARY KEY (id),
+    CONSTRAINT uc_storeddevice_ownerName UNIQUE (owner, name)
 );
-
-ALTER TABLE storeddevice
-	ADD CONSTRAINT uc_b6e6268240073470dd233ab66 UNIQUE (owner, name);
 
 CREATE TABLE storedboolproperty
 (
@@ -19,11 +17,9 @@ CREATE TABLE storedboolproperty
 	timestamp TIMESTAMP WITHOUT TIME ZONE,
 	requested BOOLEAN,
 	reported BOOLEAN,
-	CONSTRAINT pk_storedboolproperty PRIMARY KEY (id)
+	CONSTRAINT pk_storedboolproperty PRIMARY KEY (id),
+    CONSTRAINT fk_storedboolproperty_storeddevice FOREIGN KEY (device_id) REFERENCES storeddevice (id)
 );
-
-ALTER TABLE storedboolproperty
-	ADD CONSTRAINT fk_storedboolproperty_on_device FOREIGN KEY (device_id) REFERENCES storeddevice (id);
 
 CREATE TABLE storedfloatproperty
 (
@@ -33,11 +29,9 @@ CREATE TABLE storedfloatproperty
 	timestamp TIMESTAMP WITHOUT TIME ZONE,
 	requested FLOAT,
 	reported FLOAT,
-	CONSTRAINT pk_storedfloatproperty PRIMARY KEY (id)
+	CONSTRAINT pk_storedfloatproperty PRIMARY KEY (id),
+    CONSTRAINT fk_storedfloatproperty_deviceId FOREIGN KEY (device_id) REFERENCES storeddevice (id)
 );
-
-ALTER TABLE storedfloatproperty
-	ADD CONSTRAINT fk_storedfloatproperty_on_device FOREIGN KEY (device_id) REFERENCES storeddevice (id);
 
 CREATE TABLE storedintproperty
 (
