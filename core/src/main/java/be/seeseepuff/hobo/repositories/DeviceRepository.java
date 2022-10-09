@@ -33,6 +33,12 @@ public class DeviceRepository implements PanacheRepository<StoredDevice>
 		return persist(device);
 	}
 
+	public Uni<Long> deleteDevicesByOwner(String owner)
+	{
+		log.info("Deleting devices for owner {}", owner);
+		return delete("owner", owner);
+	}
+
 	public Uni<List<StoredDevice>> findDevicesByOwner(String owner)
 	{
 		return list("owner", owner);

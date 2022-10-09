@@ -314,4 +314,9 @@ public class DeviceService
 		return deviceRepository.findDeviceByOwnerAndName(device.getOwner(), device.getName())
 			.onFailure(NoResultException.class).recoverWithUni(() -> createDevice(device));
 	}
+
+	public Uni<Long> deleteDevicesByOwner(String owner)
+	{
+		return deviceRepository.deleteDevicesByOwner(owner);
+	}
 }

@@ -3,9 +3,11 @@ package be.seeseepuff.hobo.repositories;
 import be.seeseepuff.hobo.models.StoredDevice;
 import io.quarkus.hibernate.reactive.panache.PanacheRepository;
 import io.smallrye.mutiny.Uni;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
+@Slf4j
 public abstract class PropertyRepository<T> implements PanacheRepository<T>
 {
 	private final String queryGetProperty;
@@ -29,6 +31,7 @@ public abstract class PropertyRepository<T> implements PanacheRepository<T>
 
 	public Uni<T> insertProperty(T property)
 	{
+		log.info("Persisting property: {}", property);
 		return persistAndFlush(property);
 	}
 }

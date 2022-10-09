@@ -1,6 +1,7 @@
 package be.seeseepuff.hobo.controllers;
 
 import be.seeseepuff.hobo.dto.Device;
+import be.seeseepuff.hobo.dto.DeviceDeleteResult;
 import be.seeseepuff.hobo.dto.Property;
 import be.seeseepuff.hobo.exceptions.DeviceNotFoundException;
 import be.seeseepuff.hobo.exceptions.InvalidFilterException;
@@ -72,6 +73,18 @@ public class GraphController
 		return Panache.withTransaction(() -> deviceService.getOrCreate(device).map(d -> d));
 	}
 
+	@Mutation("deleteDevices")
+	public Uni<DeviceDeleteResult> deleteDevices(String owner)
+	{
+		return Panache.withTransaction(() -> deviceService.deleteDevicesByOwner(owner))
+			.map(count ->
+			{
+				DeviceDeleteResult result = new DeviceDeleteResult();
+				result.setCount(count);
+				return result;
+			});
+	}
+
 	@Mutation
 	public Uni<List<Property<Integer>>> updateIntProperties(long deviceId, List<PropertyIntUpdateRequest> updates, PropertyUpdateCondition condition)
 	{
@@ -95,6 +108,9 @@ public class GraphController
 	{
 		return updateProperty(deviceId, device -> deviceService.updateBoolProperties(device, updates, improveCondition(condition)));
 	}
+
+//	@Mutation
+
 
 	@Subscription
 	public Multi<PropertyUpdate> propertyUpdates(PropertyUpdateFilter filter)
