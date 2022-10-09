@@ -17,6 +17,7 @@ import org.eclipse.microprofile.graphql.*;
 
 import javax.inject.Inject;
 import javax.persistence.NoResultException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -72,27 +73,27 @@ public class GraphController
 	}
 
 	@Mutation
-	public Uni<List<Property<Integer>>> updateIntProperties(long deviceId, List<PropertyIntUpdateRequest> updates)
+	public Uni<List<Property<Integer>>> updateIntProperties(long deviceId, List<PropertyIntUpdateRequest> updates, PropertyUpdateCondition condition)
 	{
-		return updateProperty(deviceId, device -> deviceService.updateIntProperties(device, updates));
+		return updateProperty(deviceId, device -> deviceService.updateIntProperties(device, updates, improveCondition(condition)));
 	}
 
 	@Mutation
-	public Uni<List<Property<String>>> updateStringProperties(long deviceId, List<PropertyStringUpdateRequest> updates)
+	public Uni<List<Property<String>>> updateStringProperties(long deviceId, List<PropertyStringUpdateRequest> updates, PropertyUpdateCondition condition)
 	{
-		return updateProperty(deviceId, device -> deviceService.updateStringProperties(device, updates));
+		return updateProperty(deviceId, device -> deviceService.updateStringProperties(device, updates, improveCondition(condition)));
 	}
 
 	@Mutation
-	public Uni<List<Property<Float>>> updateFloatProperties(long deviceId, List<PropertyFloatUpdateRequest> updates)
+	public Uni<List<Property<Float>>> updateFloatProperties(long deviceId, List<PropertyFloatUpdateRequest> updates, PropertyUpdateCondition condition)
 	{
-		return updateProperty(deviceId, device -> deviceService.updateFloatProperties(device, updates));
+		return updateProperty(deviceId, device -> deviceService.updateFloatProperties(device, updates, improveCondition(condition)));
 	}
 
 	@Mutation
-	public Uni<List<Property<Boolean>>> updateBoolProperties(long deviceId, List<PropertyBoolUpdateRequest> updates)
+	public Uni<List<Property<Boolean>>> updateBoolProperties(long deviceId, List<PropertyBoolUpdateRequest> updates, PropertyUpdateCondition condition)
 	{
-		return updateProperty(deviceId, device -> deviceService.updateBoolProperties(device, updates));
+		return updateProperty(deviceId, device -> deviceService.updateBoolProperties(device, updates, improveCondition(condition)));
 	}
 
 	@Subscription
@@ -166,5 +167,14 @@ public class GraphController
 				.filter(Property::requiresUpdate)
 				.collect(Collectors.toList());
 		}
+	}
+
+	private PropertyUpdateCondition improveCondition(PropertyUpdateCondition condition)
+	{
+		if (condition == null)
+			condition = new PropertyUpdateCondition();
+		if (condition.getNoNewerThen() == null)
+			condition.setNoNewerThen(LocalDateTime.MAX);
+		return condition;
 	}
 }

@@ -2,10 +2,7 @@ package be.seeseepuff.hobo.services;
 
 import be.seeseepuff.hobo.dto.Property;
 import be.seeseepuff.hobo.exceptions.DeviceExistsException;
-import be.seeseepuff.hobo.graphql.requests.PropertyBoolUpdateRequest;
-import be.seeseepuff.hobo.graphql.requests.PropertyFloatUpdateRequest;
-import be.seeseepuff.hobo.graphql.requests.PropertyIntUpdateRequest;
-import be.seeseepuff.hobo.graphql.requests.PropertyStringUpdateRequest;
+import be.seeseepuff.hobo.graphql.requests.*;
 import be.seeseepuff.hobo.models.*;
 import be.seeseepuff.hobo.repositories.*;
 import io.smallrye.mutiny.Multi;
@@ -67,37 +64,52 @@ public class DeviceService
 		return deviceRepository.findDeviceByOwnerAndName(owner, name);
 	}
 
-	public Uni<StoredIntProperty> getIntProperty(StoredDevice device, String propertyName)
-	{
-		return intPropertyRepository.getProperty(device, propertyName);
-	}
-
 	private <T, P extends StoredProperty<T>> P enrichNewProperty(P property, PropertyUpdateRequest<T> request, StoredDevice device)
 	{
 		property.setName(request.getProperty());
 		property.setDevice(device);
+		property.setReportTimestamp(LocalDateTime.MIN);
+		property.setRequestTimestamp(LocalDateTime.MIN);
 		return property;
 	}
 
 	private <T, P extends StoredProperty<T>> P updateProperty(P newProperty, P oldProperty, PropertyUpdateRequest<T> request)
 	{
+		LocalDateTime now = LocalDateTime.now();
 		newProperty.setDevice(oldProperty.getDevice());
 		newProperty.setName(oldProperty.getName());
-		newProperty.setTimestamp(LocalDateTime.now());
 
 		if (request.getRequest() != null)
+		{
 			newProperty.setRequested(request.getRequest());
+			newProperty.setRequestTimestamp(now);
+		}
 		else if (request.isUnset())
+		{
 			newProperty.setRequested(null);
+			newProperty.setRequestTimestamp(now);
+		}
 		else
+		{
 			newProperty.setRequested(oldProperty.getRequested());
+			newProperty.setRequestTimestamp(oldProperty.getRequestTimestamp());
+		}
 
 		if (request.getReport() != null)
+		{
 			newProperty.setReported(request.getReport());
+			newProperty.setReportTimestamp(now);
+		}
 		else if (request.isUnset())
+		{
 			newProperty.setReported(null);
+			newProperty.setReportTimestamp(now);
+		}
 		else
+		{
 			newProperty.setReported(oldProperty.getReported());
+			newProperty.setReportTimestamp(oldProperty.getReportTimestamp());
+		}
 		return newProperty;
 	}
 
@@ -134,66 +146,87 @@ public class DeviceService
 		return Multi.createFrom().item(updateProperty(propertySupplier.get(), oldProperty, update));
 	}
 
-	private Uni<StoredProperty<Integer>> updateIntProperty(StoredDevice device, PropertyUpdateRequest<Integer> update)
+	private Multi<StoredProperty<Integer>> updateIntProperty(StoredDevice device, PropertyUpdateRequest<Integer> update, PropertyUpdateCondition condition)
 	{
-		return intPropertyRepository.getProperty(device, update.getProperty())
-			.replaceIfNullWith(() -> enrichNewProperty(new StoredIntProperty(), update, device))
-			.flatMap(property -> intPropertyRepository.insertProperty(updateProperty(new StoredIntProperty(), property, update)));
+		return updateProperty(device, update, condition, intPropertyRepository, StoredIntProperty::new);
 	}
 
-	private Uni<StoredProperty<String>> updateStringProperty(StoredDevice device, PropertyUpdateRequest<String> update)
+	private Multi<StoredProperty<String>> updateStringProperty(StoredDevice device, PropertyUpdateRequest<String> update, PropertyUpdateCondition condition)
 	{
-		return stringPropertyRepository.getProperty(device, update.getProperty())
-			.replaceIfNullWith(() -> enrichNewProperty(new StoredStringProperty(), update, device))
-			.flatMap(property -> stringPropertyRepository.insertProperty(updateProperty(new StoredStringProperty(), property, update)));
+		return updateProperty(device, update, condition, stringPropertyRepository, StoredStringProperty::new);
 	}
 
-	private Multi<StoredProperty<Float>> updateFloatProperty(StoredDevice device, PropertyUpdateRequest<Float> update)
+	private Multi<StoredProperty<Float>> updateFloatProperty(StoredDevice device, PropertyUpdateRequest<Float> update, PropertyUpdateCondition condition)
 	{
-		return floatPropertyRepository.getProperty(device, update.getProperty())
-			.onItem().transformToMulti(property -> updateProperty(property, device, update, StoredFloatProperty::new))
-			.onItem().transformToUniAndMerge(property -> floatPropertyRepository.insertProperty(property));
+		return updateProperty(device, update, condition, floatPropertyRepository, StoredFloatProperty::new);
 	}
 
-	private Uni<StoredProperty<Boolean>> updateBoolProperty(StoredDevice device, PropertyUpdateRequest<Boolean> update)
+	private Multi<StoredProperty<Boolean>> updateBoolProperty(StoredDevice device, PropertyUpdateRequest<Boolean> update, PropertyUpdateCondition condition)
 	{
-		return boolPropertyRepository.getProperty(device, update.getProperty())
-			.replaceIfNullWith(() -> enrichNewProperty(new StoredBoolProperty(), update, device))
-			.flatMap(property -> boolPropertyRepository.insertProperty(updateProperty(new StoredBoolProperty(), property, update)));
+		return updateProperty(device, update, condition, boolPropertyRepository, StoredBoolProperty::new);
 	}
 
-	public Uni<List<StoredProperty<Integer>>> updateIntProperties(StoredDevice device, List<PropertyIntUpdateRequest> updates)
+	private <T, P extends StoredProperty<T>> Multi<StoredProperty<T>> updateProperty(
+		StoredDevice device,
+		PropertyUpdateRequest<T> update,
+		PropertyUpdateCondition condition,
+		PropertyRepository<P> repository,
+		Supplier<P> producer
+	)
+	{
+		return repository.getProperty(device, update.getProperty())
+			.replaceIfNullWith(() -> enrichNewProperty(producer.get(), update, device))
+			.toMulti()
+			.filter(property -> filterProperty(property, update, condition))
+			.concatMap(property -> updateProperty(property, device, update, producer))
+			.onItem().transformToUniAndMerge(repository::insertProperty);
+	}
+
+	private <T> boolean filterProperty(Property<T> property,  PropertyUpdateRequest<T> update, PropertyUpdateCondition condition)
+	{
+		boolean updatesRequest = update.isUnset() || (update.getRequest() != null);
+		boolean updatesReport = update.isUnset() || (update.getReport() != null);
+
+		if (updatesRequest && property.getRequestTimestamp().isAfter(condition.getNoNewerThen()))
+			return false;
+		else if (updatesReport && property.getReportTimestamp().isAfter(condition.getNoNewerThen()))
+			return false;
+		else
+			return true;
+	}
+
+	public Uni<List<StoredProperty<Integer>>> updateIntProperties(StoredDevice device, List<PropertyIntUpdateRequest> updates, PropertyUpdateCondition condition)
 	{
 		return Multi.createFrom().iterable(updates)
 			.map(PropertyUpdateRequest::from)
-			.onItem().transformToUniAndMerge(update -> updateIntProperty(device, update))
+			.flatMap(update -> updateIntProperty(device, update, condition))
 			.collect().asList()
 			.invoke(this::notifyIntChanges);
 	}
 
-	public Uni<List<StoredProperty<String>>> updateStringProperties(StoredDevice device, List<PropertyStringUpdateRequest> updates)
+	public Uni<List<StoredProperty<String>>> updateStringProperties(StoredDevice device, List<PropertyStringUpdateRequest> updates, PropertyUpdateCondition condition)
 	{
 		return Multi.createFrom().iterable(updates)
 			.map(PropertyUpdateRequest::from)
-			.onItem().transformToUniAndMerge(update -> updateStringProperty(device, update))
+			.flatMap(update -> updateStringProperty(device, update, condition))
 			.collect().asList()
 			.invoke(this::notifyStringChanges);
 	}
 
-	public Uni<List<StoredProperty<Float>>> updateFloatProperties(StoredDevice device, List<PropertyFloatUpdateRequest> updates)
+	public Uni<List<StoredProperty<Float>>> updateFloatProperties(StoredDevice device, List<PropertyFloatUpdateRequest> updates, PropertyUpdateCondition condition)
 	{
 		return Multi.createFrom().iterable(updates)
 			.map(PropertyUpdateRequest::from)
-			.onItem().transformToMultiAndMerge(update -> updateFloatProperty(device, update))
+			.flatMap(update -> updateFloatProperty(device, update, condition))
 			.collect().asList()
 			.invoke(this::notifyFloatChanges);
 	}
 
-	public Uni<List<StoredProperty<Boolean>>> updateBoolProperties(StoredDevice device, List<PropertyBoolUpdateRequest> updates)
+	public Uni<List<StoredProperty<Boolean>>> updateBoolProperties(StoredDevice device, List<PropertyBoolUpdateRequest> updates, PropertyUpdateCondition condition)
 	{
 		return Multi.createFrom().iterable(updates)
 			.map(PropertyUpdateRequest::from)
-			.onItem().transformToUniAndMerge(update -> updateBoolProperty(device, update))
+			.flatMap(update -> updateBoolProperty(device, update, condition))
 			.collect().asList()
 			.invoke(this::notifyBoolChanges);
 	}
@@ -242,10 +275,10 @@ public class DeviceService
 		notifyChanges(properties, PropertyUpdate::setBoolProperties, PropertyUpdate::getBoolProperties);
 	}
 
-	public Uni<List<StoredDevice>> getDevicesByOwner(String owner)
-	{
-		return deviceRepository.findDevicesByOwner(owner);
-	}
+//	public Uni<List<StoredDevice>> getDevicesByOwner(String owner)
+//	{
+//		return deviceRepository.findDevicesByOwner(owner);
+//	}
 
 	public Uni<List<StoredIntProperty>> getIntProperties(long device)
 	{
@@ -267,14 +300,14 @@ public class DeviceService
 		return stringPropertyRepository.getPropertiesFor(device);
 	}
 
-	public Multi<StoredIntProperty> getIntPropertiesRequiringUpdate(String owner)
-	{
-		return getDevicesByOwner(owner)
-			.onItem().<StoredDevice>disjoint()
-			.onItem().transformToUniAndMerge(device -> intPropertyRepository.getPropertiesFor(device))
-			.onItem().<StoredIntProperty>disjoint()
-			.filter(StoredIntProperty::requiresUpdate);
-	}
+//	public Multi<StoredIntProperty> getIntPropertiesRequiringUpdate(String owner)
+//	{
+//		return getDevicesByOwner(owner)
+//			.onItem().<StoredDevice>disjoint()
+//			.onItem().transformToUniAndMerge(device -> intPropertyRepository.getPropertiesFor(device))
+//			.onItem().<StoredIntProperty>disjoint()
+//			.filter(StoredIntProperty::requiresUpdate);
+//	}
 
 	public Uni<StoredDevice> getOrCreate(StoredDevice device)
 	{

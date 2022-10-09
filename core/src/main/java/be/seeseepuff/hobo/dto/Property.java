@@ -3,6 +3,8 @@ package be.seeseepuff.hobo.dto;
 import io.smallrye.common.constraint.NotNull;
 import io.smallrye.common.constraint.Nullable;
 
+import java.time.LocalDateTime;
+
 public abstract class Property<T>
 {
 	@NotNull
@@ -16,6 +18,12 @@ public abstract class Property<T>
 	public abstract T getReported();
 
 	public abstract void setReported(@Nullable T value);
+
+	public abstract LocalDateTime getRequestTimestamp();
+	public abstract void setRequestTimestamp(LocalDateTime timestamp);
+
+	public abstract LocalDateTime getReportTimestamp();
+	public abstract void setReportTimestamp(LocalDateTime timestamp);
 
 	public boolean requiresUpdate()
 	{
