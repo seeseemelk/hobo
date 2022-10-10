@@ -9,11 +9,6 @@ import javax.persistence.*;
 @Entity
 @Getter
 @Setter
-@Table(
-	uniqueConstraints = {
-		@UniqueConstraint(columnNames = {"owner", "name"})
-	}
-)
 public class StoredDevice extends Device
 {
 	@Id

@@ -19,11 +19,11 @@ public abstract class Property<T>
 
 	public abstract void setReported(@Nullable T value);
 
-	public abstract LocalDateTime getRequestTimestamp();
-	public abstract void setRequestTimestamp(LocalDateTime timestamp);
+	public abstract LocalDateTime getRequestUpdated();
+	public abstract void setRequestUpdated(LocalDateTime timestamp);
 
-	public abstract LocalDateTime getReportTimestamp();
-	public abstract void setReportTimestamp(LocalDateTime timestamp);
+	public abstract LocalDateTime getReportUpdated();
+	public abstract void setReportUpdated(LocalDateTime timestamp);
 
 	public boolean requiresUpdate()
 	{

@@ -21,6 +21,7 @@ public abstract class StoredProperty<T> extends Property<T>
 	@JoinColumn(name="device_id")
 	private StoredDevice device;
 	private String name;
-	private LocalDateTime requestTimestamp;
-	private LocalDateTime reportTimestamp;
+	private LocalDateTime requestUpdated;
+	private LocalDateTime reportUpdated;
+	private LocalDateTime lastUpdated;
 }

@@ -88,25 +88,25 @@ public class GraphController
 	@Mutation
 	public Uni<List<Property<Integer>>> updateIntProperties(long deviceId, List<PropertyIntUpdateRequest> updates, PropertyUpdateCondition condition)
 	{
-		return updateProperty(deviceId, device -> deviceService.updateIntProperties(device, updates, improveCondition(condition)));
+		return updateProperty(deviceId, device -> deviceService.updateIntProperties(device, updates, condition));
 	}
 
 	@Mutation
 	public Uni<List<Property<String>>> updateStringProperties(long deviceId, List<PropertyStringUpdateRequest> updates, PropertyUpdateCondition condition)
 	{
-		return updateProperty(deviceId, device -> deviceService.updateStringProperties(device, updates, improveCondition(condition)));
+		return updateProperty(deviceId, device -> deviceService.updateStringProperties(device, updates, condition));
 	}
 
 	@Mutation
 	public Uni<List<Property<Float>>> updateFloatProperties(long deviceId, List<PropertyFloatUpdateRequest> updates, PropertyUpdateCondition condition)
 	{
-		return updateProperty(deviceId, device -> deviceService.updateFloatProperties(device, updates, improveCondition(condition)));
+		return updateProperty(deviceId, device -> deviceService.updateFloatProperties(device, updates, condition));
 	}
 
 	@Mutation
 	public Uni<List<Property<Boolean>>> updateBoolProperties(long deviceId, List<PropertyBoolUpdateRequest> updates, PropertyUpdateCondition condition)
 	{
-		return updateProperty(deviceId, device -> deviceService.updateBoolProperties(device, updates, improveCondition(condition)));
+		return updateProperty(deviceId, device -> deviceService.updateBoolProperties(device, updates, condition));
 	}
 
 //	@Mutation
@@ -183,14 +183,5 @@ public class GraphController
 				.filter(Property::requiresUpdate)
 				.collect(Collectors.toList());
 		}
-	}
-
-	private PropertyUpdateCondition improveCondition(PropertyUpdateCondition condition)
-	{
-		if (condition == null)
-			condition = new PropertyUpdateCondition();
-		if (condition.getNoNewerThen() == null)
-			condition.setNoNewerThen(LocalDateTime.MAX);
-		return condition;
 	}
 }

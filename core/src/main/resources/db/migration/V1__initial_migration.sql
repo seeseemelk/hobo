@@ -12,55 +12,51 @@ CREATE TABLE storeddevice
 CREATE TABLE storedboolproperty
 (
 	id BIGINT NOT NULL,
-	device_id BIGINT,
+	device_id BIGINT references storeddevice on delete cascade,
 	name VARCHAR(255),
-	reportTimestamp TIMESTAMP WITHOUT TIME ZONE,
-	requestTimestamp TIMESTAMP WITHOUT TIME ZONE,
+	reportUpdated TIMESTAMP WITHOUT TIME ZONE,
+	requestUpdated TIMESTAMP WITHOUT TIME ZONE,
+    lastUpdated TIMESTAMP WITHOUT TIME ZONE,
 	requested BOOLEAN,
 	reported BOOLEAN,
-	CONSTRAINT pk_storedboolproperty PRIMARY KEY (id),
-    CONSTRAINT fk_storedboolproperty_storeddevice FOREIGN KEY (device_id) REFERENCES storeddevice (id)
+	CONSTRAINT pk_storedboolproperty PRIMARY KEY (id)
 );
 
 CREATE TABLE storedfloatproperty
 (
 	id BIGINT NOT NULL,
-	device_id BIGINT,
+    device_id BIGINT references storeddevice on delete cascade,
 	name VARCHAR(255),
-	reportTimestamp TIMESTAMP WITHOUT TIME ZONE,
-	requestTimestamp TIMESTAMP WITHOUT TIME ZONE,
+    reportUpdated TIMESTAMP WITHOUT TIME ZONE,
+    requestUpdated TIMESTAMP WITHOUT TIME ZONE,
+    lastUpdated TIMESTAMP WITHOUT TIME ZONE,
 	requested FLOAT,
 	reported FLOAT,
-	CONSTRAINT pk_storedfloatproperty PRIMARY KEY (id),
-    CONSTRAINT fk_storedfloatproperty_deviceId FOREIGN KEY (device_id) REFERENCES storeddevice (id)
+	CONSTRAINT pk_storedfloatproperty PRIMARY KEY (id)
 );
 
 CREATE TABLE storedintproperty
 (
 	id BIGINT NOT NULL,
-	device_id BIGINT,
+    device_id BIGINT references storeddevice on delete cascade,
 	name VARCHAR(255),
-	reportTimestamp TIMESTAMP WITHOUT TIME ZONE,
-	requestTimestamp TIMESTAMP WITHOUT TIME ZONE,
+    reportUpdated TIMESTAMP WITHOUT TIME ZONE,
+    requestUpdated TIMESTAMP WITHOUT TIME ZONE,
+    lastUpdated TIMESTAMP WITHOUT TIME ZONE,
 	requested INTEGER,
 	reported INTEGER,
 	CONSTRAINT pk_storedintproperty PRIMARY KEY (id)
 );
 
-ALTER TABLE storedintproperty
-	ADD CONSTRAINT fk_storedintproperty_on_device FOREIGN KEY (device_id) REFERENCES storeddevice (id);
-
 CREATE TABLE storedstringproperty
 (
 	id BIGINT NOT NULL,
-	device_id BIGINT,
+    device_id BIGINT references storeddevice on delete cascade,
 	name VARCHAR(255),
-	reportTimestamp TIMESTAMP WITHOUT TIME ZONE,
-	requestTimestamp TIMESTAMP WITHOUT TIME ZONE,
+    reportUpdated TIMESTAMP WITHOUT TIME ZONE,
+    requestUpdated TIMESTAMP WITHOUT TIME ZONE,
+    lastUpdated TIMESTAMP WITHOUT TIME ZONE,
 	requested VARCHAR(255),
 	reported VARCHAR(255),
 	CONSTRAINT pk_storedstringproperty PRIMARY KEY (id)
 );
-
-ALTER TABLE storedstringproperty
-	ADD CONSTRAINT fk_storedstringproperty_on_device FOREIGN KEY (device_id) REFERENCES storeddevice (id);

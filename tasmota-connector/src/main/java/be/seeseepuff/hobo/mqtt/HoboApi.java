@@ -23,13 +23,13 @@ public interface HoboApi
 	Uni<DeviceId> getOrCreateDevice(String owner, String name);
 
 	@Mutation
-	Uni<List<PropertyName>> updateIntProperties(long deviceId, List<PropertyIntUpdateRequest> updates);
+	Uni<List<PropertyName>> updateIntProperties(long deviceId, List<PropertyIntUpdateRequest> updates, PropertyUpdateCondition condition);
 
 	@Mutation
-	Uni<List<PropertyName>> updateFloatProperties(long deviceId, List<PropertyFloatUpdateRequest> updates);
+	Uni<List<PropertyName>> updateFloatProperties(long deviceId, List<PropertyFloatUpdateRequest> updates, PropertyUpdateCondition condition);
 
 	@Mutation
-	Uni<List<PropertyName>> updateStringProperties(long deviceId, List<PropertyStringUpdateRequest> updates);
+	Uni<List<PropertyName>> updateStringProperties(long deviceId, List<PropertyStringUpdateRequest> updates, PropertyUpdateCondition condition);
 
 	@Subscription
 	Multi<PropertyUpdate> propertyUpdates(PropertyUpdateFilter filter);

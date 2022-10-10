@@ -9,7 +9,7 @@ import javax.persistence.Entity;
 @Entity
 @Getter
 @Setter
-@ToString
+@ToString(callSuper = true)
 public class StoredIntProperty extends StoredProperty<Integer>
 {
 	private Integer requested;

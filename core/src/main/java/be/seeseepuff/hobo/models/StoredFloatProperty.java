@@ -9,7 +9,7 @@ import javax.persistence.Entity;
 @Entity
 @Getter
 @Setter
-@ToString
+@ToString(callSuper = true)
 public class StoredFloatProperty extends StoredProperty<Float>
 {
 	private Float requested;

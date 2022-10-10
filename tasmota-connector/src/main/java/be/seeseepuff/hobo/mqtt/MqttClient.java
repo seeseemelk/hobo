@@ -2,6 +2,7 @@ package be.seeseepuff.hobo.mqtt;
 
 import be.seeseepuff.hobo.graphql.requests.PropertyFloatUpdateRequest;
 import be.seeseepuff.hobo.graphql.requests.PropertyStringUpdateRequest;
+import be.seeseepuff.hobo.graphql.requests.PropertyUpdateCondition;
 import be.seeseepuff.hobo.graphql.requests.PropertyUpdateFilter;
 import be.seeseepuff.hobo.mqtt.dto.DeviceId;
 import be.seeseepuff.hobo.mqtt.dto.Property;
@@ -28,6 +29,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -77,6 +79,7 @@ public class MqttClient
 		Color color = new Color();
 
 		List<PropertyFloatUpdateRequest> requests = new ArrayList<>();
+		LocalDateTime noNewerThen = LocalDateTime.MIN;
 
 		if (update.getFloatProperties() != null)
 		{
@@ -84,6 +87,9 @@ public class MqttClient
 			{
 				boolean needsUpdate = property.getRequested() != null && !property.getRequested().equals(property.getReported());
 				log.info("Testing property {} to {} (from {}) (needsUpdate={})", property.getName(), property.getRequested(), property.getReported(), needsUpdate);
+				if (property.getRequestUpdated() != null && property.getRequestUpdated().isAfter(noNewerThen))
+					noNewerThen = property.getRequestUpdated();
+
 				switch (property.getName())
 				{
 					case "red":
@@ -131,14 +137,19 @@ public class MqttClient
 			log.info("Color needs no change");
 
 		log.info("Updating float properties");
-		updateFloatProperties(context, requests).subscribe().with(list -> {});
+		PropertyUpdateCondition condition = new PropertyUpdateCondition();
+		condition.setNoNewerThen(noNewerThen);
+		updateFloatProperties(context, requests, condition).subscribe().with(list -> {});
 		log.info("Finished");
 	}
 
 	private void updateContext(Context context)
 	{
 		if (context.isWaitingForResult())
+		{
+			log.warn("Device is already waiting for a command");
 			return;
+		}
 
 		if (context.isUpdateColor())
 		{
@@ -205,7 +216,7 @@ public class MqttClient
 		String device = topicParts[1];
 		String endpoint = topicParts[2];
 
-		if (endpoint.equals("COLOR"))
+		if (endpoint.equals("RESULT") || endpoint.equals("COLOR"))
 		{
 			String payload = new String(message.getPayload());
 			Result result = mapper.readValue(payload, Result.class);
@@ -249,7 +260,9 @@ public class MqttClient
 			requests.add(PropertyFloatUpdateRequest.withReport("blue", color.getBlue()));
 		if (color.getWhite() != null)
 			requests.add(PropertyFloatUpdateRequest.withReport("white", color.getWhite()));
-		return updateFloatProperties(context, requests);
+		PropertyUpdateCondition condition = new PropertyUpdateCondition();
+		condition.setModifyUnchanged(true);
+		return updateFloatProperties(context, requests, condition);
 	}
 
 	private Uni<Void> reportStringProperties(Context context)
@@ -257,10 +270,12 @@ public class MqttClient
 		List<PropertyStringUpdateRequest> requests = new ArrayList<>();
 		if (context.getIp() != null)
 			requests.add(PropertyStringUpdateRequest.withReport("ip", context.getIp()));
-		return updateStringProperties(context, requests);
+		PropertyUpdateCondition condition = new PropertyUpdateCondition();
+		condition.setModifyUnchanged(false);
+		return updateStringProperties(context, requests, condition);
 	}
 
-	private Uni<Void> updateFloatProperties(Context context, List<PropertyFloatUpdateRequest> requests)
+	private Uni<Void> updateFloatProperties(Context context, List<PropertyFloatUpdateRequest> requests, PropertyUpdateCondition condition)
 	{
 		if (requests.isEmpty())
 			return Uni.createFrom().voidItem();
@@ -270,11 +285,11 @@ public class MqttClient
 				.map(PropertyFloatUpdateRequest::getProperty)
 				.collect(Collectors.joining(", "));
 			log.info("Updating properties {} for device {}", propertyNames, context.getTopic());
-			return hoboApi.updateFloatProperties(context.getDeviceId(), requests).replaceWithVoid();
+			return hoboApi.updateFloatProperties(context.getDeviceId(), requests, condition).replaceWithVoid();
 		}
 	}
 
-	private Uni<Void> updateStringProperties(Context context, List<PropertyStringUpdateRequest> requests)
+	private Uni<Void> updateStringProperties(Context context, List<PropertyStringUpdateRequest> requests, PropertyUpdateCondition condition)
 	{
 		if (requests.isEmpty())
 			return Uni.createFrom().voidItem();
@@ -284,7 +299,7 @@ public class MqttClient
 				.map(PropertyStringUpdateRequest::getProperty)
 				.collect(Collectors.joining(", "));
 			log.info("Updating properties {} for device {}", propertyNames, context.getTopic());
-			return hoboApi.updateStringProperties(context.getDeviceId(), requests).replaceWithVoid();
+			return hoboApi.updateStringProperties(context.getDeviceId(), requests, condition).replaceWithVoid();
 		}
 	}
 

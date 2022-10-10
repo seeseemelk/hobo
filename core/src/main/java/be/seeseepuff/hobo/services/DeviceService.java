@@ -5,6 +5,7 @@ import be.seeseepuff.hobo.exceptions.DeviceExistsException;
 import be.seeseepuff.hobo.graphql.requests.*;
 import be.seeseepuff.hobo.models.*;
 import be.seeseepuff.hobo.repositories.*;
+import be.seeseepuff.hobo.utils.TimeUtils;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
@@ -68,8 +69,6 @@ public class DeviceService
 	{
 		property.setName(request.getProperty());
 		property.setDevice(device);
-		property.setReportTimestamp(LocalDateTime.MIN);
-		property.setRequestTimestamp(LocalDateTime.MIN);
 		return property;
 	}
 
@@ -82,68 +81,35 @@ public class DeviceService
 		if (request.getRequest() != null)
 		{
 			newProperty.setRequested(request.getRequest());
-			newProperty.setRequestTimestamp(now);
+			newProperty.setRequestUpdated(now);
 		}
 		else if (request.isUnset())
 		{
 			newProperty.setRequested(null);
-			newProperty.setRequestTimestamp(now);
+			newProperty.setRequestUpdated(now);
 		}
 		else
 		{
 			newProperty.setRequested(oldProperty.getRequested());
-			newProperty.setRequestTimestamp(oldProperty.getRequestTimestamp());
+			newProperty.setRequestUpdated(oldProperty.getRequestUpdated());
 		}
 
 		if (request.getReport() != null)
 		{
 			newProperty.setReported(request.getReport());
-			newProperty.setReportTimestamp(now);
+			newProperty.setReportUpdated(now);
 		}
 		else if (request.isUnset())
 		{
 			newProperty.setReported(null);
-			newProperty.setReportTimestamp(now);
+			newProperty.setReportUpdated(now);
 		}
 		else
 		{
 			newProperty.setReported(oldProperty.getReported());
-			newProperty.setReportTimestamp(oldProperty.getReportTimestamp());
+			newProperty.setReportUpdated(oldProperty.getReportUpdated());
 		}
 		return newProperty;
-	}
-
-	private <T, P extends StoredProperty<T>> Multi<P> updateProperty(
-		P oldProperty,
-		StoredDevice device,
-		PropertyUpdateRequest<T> update,
-		Supplier<P> propertySupplier
-	)
-	{
-		if (oldProperty == null)
-			oldProperty = enrichNewProperty(propertySupplier.get(), update, device);
-		else
-		{
-			boolean reportedEqual = Objects.equals(oldProperty.getReported(), update.getReport());
-			boolean requestedEqual = Objects.equals(oldProperty.getRequested(), update.getRequest());
-			log.info("Unset: {}, reportedEqual: {}, requestedEqual: {}", update.isUnset(), reportedEqual, requestedEqual);
-			if (update.isUnset() && reportedEqual && requestedEqual)
-			{
-				log.info("Property needs no change");
-				return Multi.createFrom().empty();
-			}
-
-			boolean reportedNull = update.getReport() == null;
-			boolean requestedNull = update.getRequest() == null;
-			log.info("reportedNull: {}, requestedNull: {}", reportedNull, requestedNull);
-			if (!update.isUnset() && !((!reportedNull && !reportedEqual) || (!requestedNull && !requestedEqual)))
-			{
-				log.info("Property needs no change");
-				return Multi.createFrom().empty();
-			}
-		}
-
-		return Multi.createFrom().item(updateProperty(propertySupplier.get(), oldProperty, update));
 	}
 
 	private Multi<StoredProperty<Integer>> updateIntProperty(StoredDevice device, PropertyUpdateRequest<Integer> update, PropertyUpdateCondition condition)
@@ -174,25 +140,64 @@ public class DeviceService
 		Supplier<P> producer
 	)
 	{
+
+		PropertyUpdateCondition improvedCondition = improveCondition(condition);
+
 		return repository.getProperty(device, update.getProperty())
 			.replaceIfNullWith(() -> enrichNewProperty(producer.get(), update, device))
 			.toMulti()
-			.filter(property -> filterProperty(property, update, condition))
-			.concatMap(property -> updateProperty(property, device, update, producer))
+			.concatMap(property -> updateProperty(property, device, update, producer, improvedCondition))
 			.onItem().transformToUniAndMerge(repository::insertProperty);
 	}
 
-	private <T> boolean filterProperty(Property<T> property,  PropertyUpdateRequest<T> update, PropertyUpdateCondition condition)
+	private <T, P extends StoredProperty<T>> Multi<P> updateProperty(
+		P oldProperty,
+		StoredDevice device,
+		PropertyUpdateRequest<T> update,
+		Supplier<P> propertySupplier,
+		PropertyUpdateCondition condition
+	)
 	{
+		if (oldProperty == null)
+		{
+			oldProperty = enrichNewProperty(propertySupplier.get(), update, device);
+			return Multi.createFrom().item(updateProperty(propertySupplier.get(), oldProperty, update));
+		}
+
 		boolean updatesRequest = update.isUnset() || (update.getRequest() != null);
 		boolean updatesReport = update.isUnset() || (update.getReport() != null);
 
-		if (updatesRequest && property.getRequestTimestamp().isAfter(condition.getNoNewerThen()))
-			return false;
-		else if (updatesReport && property.getReportTimestamp().isAfter(condition.getNoNewerThen()))
-			return false;
-		else
-			return true;
+		if (condition.getNoNewerThen() != null)
+		{
+			if (updatesRequest && TimeUtils.isAfter(condition.getNoNewerThen(), oldProperty.getRequestUpdated()))
+				return empty();
+			else if (updatesReport && TimeUtils.isAfter(condition.getNoNewerThen(), oldProperty.getReportUpdated()))
+				return empty();
+		}
+
+		if (!condition.getModifyUnchanged())
+		{
+			boolean reportedEqual = Objects.equals(oldProperty.getReported(), update.getReport());
+			boolean requestedEqual = Objects.equals(oldProperty.getRequested(), update.getRequest());
+
+			log.info("Unset: {}, reportedEqual: {}, requestedEqual: {}", update.isUnset(), reportedEqual, requestedEqual);
+			if (update.isUnset() && reportedEqual && requestedEqual)
+			{
+				log.info("Property needs no change");
+				return empty();
+			}
+
+			boolean reportedNull = update.getReport() == null;
+			boolean requestedNull = update.getRequest() == null;
+			log.info("reportedNull: {}, requestedNull: {}", reportedNull, requestedNull);
+			if (!update.isUnset() && !((!reportedNull && !reportedEqual) || (!requestedNull && !requestedEqual)))
+			{
+				log.info("Property needs no change");
+				return empty();
+			}
+		}
+
+		return Multi.createFrom().item(updateProperty(propertySupplier.get(), oldProperty, update));
 	}
 
 	public Uni<List<StoredProperty<Integer>>> updateIntProperties(StoredDevice device, List<PropertyIntUpdateRequest> updates, PropertyUpdateCondition condition)
@@ -275,11 +280,6 @@ public class DeviceService
 		notifyChanges(properties, PropertyUpdate::setBoolProperties, PropertyUpdate::getBoolProperties);
 	}
 
-//	public Uni<List<StoredDevice>> getDevicesByOwner(String owner)
-//	{
-//		return deviceRepository.findDevicesByOwner(owner);
-//	}
-
 	public Uni<List<StoredIntProperty>> getIntProperties(long device)
 	{
 		return intPropertyRepository.getPropertiesFor(device);
@@ -300,15 +300,6 @@ public class DeviceService
 		return stringPropertyRepository.getPropertiesFor(device);
 	}
 
-//	public Multi<StoredIntProperty> getIntPropertiesRequiringUpdate(String owner)
-//	{
-//		return getDevicesByOwner(owner)
-//			.onItem().<StoredDevice>disjoint()
-//			.onItem().transformToUniAndMerge(device -> intPropertyRepository.getPropertiesFor(device))
-//			.onItem().<StoredIntProperty>disjoint()
-//			.filter(StoredIntProperty::requiresUpdate);
-//	}
-
 	public Uni<StoredDevice> getOrCreate(StoredDevice device)
 	{
 		return deviceRepository.findDeviceByOwnerAndName(device.getOwner(), device.getName())
@@ -318,5 +309,19 @@ public class DeviceService
 	public Uni<Long> deleteDevicesByOwner(String owner)
 	{
 		return deviceRepository.deleteDevicesByOwner(owner);
+	}
+
+	private PropertyUpdateCondition improveCondition(PropertyUpdateCondition condition)
+	{
+		if (condition == null)
+			condition = new PropertyUpdateCondition();
+		if (condition.getModifyUnchanged() == null)
+			condition.setModifyUnchanged(Boolean.FALSE);
+		return condition;
+	}
+
+	private static <T> Multi<T> empty()
+	{
+		return Multi.createFrom().empty();
 	}
 }

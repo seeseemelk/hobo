@@ -79,7 +79,8 @@ public abstract class AbstractIT
 		return response;
 	}
 
-	public <T> T[] listOf(T... values)
+	@SafeVarargs
+	public final <T> T[] listOf(T... values)
 	{
 		return values;
 	}
