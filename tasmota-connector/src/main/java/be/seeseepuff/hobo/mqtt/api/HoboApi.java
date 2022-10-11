@@ -1,4 +1,4 @@
-package be.seeseepuff.hobo.mqtt;
+package be.seeseepuff.hobo.mqtt.api;
 
 import be.seeseepuff.hobo.graphql.requests.*;
 import be.seeseepuff.hobo.mqtt.dto.DeviceId;

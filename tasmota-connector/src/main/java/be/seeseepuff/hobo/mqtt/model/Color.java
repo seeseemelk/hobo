@@ -1,4 +1,4 @@
-package be.seeseepuff.hobo.mqtt;
+package be.seeseepuff.hobo.mqtt.model;
 
 import lombok.Data;
 
