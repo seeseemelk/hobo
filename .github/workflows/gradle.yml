@@ -31,3 +31,8 @@ jobs:
       uses: gradle/gradle-build-action@67421db6bd0bf253fb4bd25b31ebb98943c375e1
       with:
         arguments: quarkusBuild
+    
+    - name: Build docker images
+      run: |
+        docker buildx build --platform=linux/amd64,linux/arm64 --build-arg=core -t seeseemelk/hobo:snapshot .
+        docker buildx build --platform=linux/amd64,linux/arm64 --build-arg=tasmota-connector -t seeseemelk/hobo:snapshot .
