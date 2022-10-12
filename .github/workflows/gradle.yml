@@ -31,6 +31,11 @@ jobs:
       uses: gradle/gradle-build-action@67421db6bd0bf253fb4bd25b31ebb98943c375e1
       with:
         arguments: quarkusBuild
+        
+    - name: Docker Setup QEMU
+      uses: docker/setup-qemu-action@v2.1.0
+      with:
+        platforms: arm64,amd64
     
     - name: Build docker images
       run: |
