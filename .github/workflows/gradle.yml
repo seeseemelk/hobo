@@ -32,7 +32,7 @@ jobs:
       with:
         arguments: quarkusBuild
         
-    - name: Docker Setup QEMU
+    - name: Setup QEMU for Docker
       uses: docker/setup-qemu-action@v2.1.0
       with:
         platforms: arm64,amd64
