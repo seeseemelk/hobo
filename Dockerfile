@@ -20,7 +20,7 @@ ARG APP
 RUN ./gradlew :$APP:quarkusBuild -Dquarkus.package.type=native -Dquarkus.native.native-image-xmx=2G
 
 ## Stage 2 : create the docker final image
-FROM quay.io/quarkus/quarkus-micro-image:1.0
+FROM quay.io/quarkus/quarkus-micro-image:2.0
 WORKDIR /work/
 ARG APP
 COPY --from=build /code/$APP/build/*-runner /work/application
