@@ -21,24 +21,13 @@ jobs:
       with:
         java-version: '11'
         distribution: 'temurin'
-    
-    - name: Run Tests
-      uses: gradle/gradle-build-action@67421db6bd0bf253fb4bd25b31ebb98943c375e1
-      with:
-        arguments: check
         
     - name: Build runnable jar
       uses: gradle/gradle-build-action@67421db6bd0bf253fb4bd25b31ebb98943c375e1
       with:
         arguments: quarkusBuild
-        
-    - name: Setup QEMU for Docker
-      uses: docker/setup-qemu-action@v2.1.0
-      with:
-        platforms: arm64,amd64
     
-    - name: Build docker images
-      run: |
-        docker buildx create --use
-        docker buildx build --platform=linux/amd64,linux/arm64 --build-arg APP=core -t seeseemelk/hobo:snapshot .
-        docker buildx build --platform=linux/amd64,linux/arm64 --build-arg APP=tasmota-connector -t seeseemelk/hobo:snapshot .
+    - name: Run Tests
+      uses: gradle/gradle-build-action@67421db6bd0bf253fb4bd25b31ebb98943c375e1
+      with:
+        arguments: check
