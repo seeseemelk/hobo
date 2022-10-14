@@ -27,5 +27,8 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
+    - name: Create Docker builder
+      run: docker buildx create --use
+
     - name: Build Docker images
       run: docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} --tag seeseemelk/hobo-${{ matrix.app }}:snapshot .
