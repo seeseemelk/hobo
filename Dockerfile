@@ -7,15 +7,12 @@ RUN microdnf install findutils
 WORKDIR /code
 COPY gradlew /code/gradlew
 COPY gradle /code/gradle
-RUN ./gradlew
 COPY gradle.properties /code/gradle.properties
 COPY settings.gradle /code/settings.gradle
 COPY buildSrc /code/buildSrc
 COPY common /code/common
 COPY core /code/core
 COPY tasmota-connector /code/tasmota-connector
-RUN ./gradlew jar
-
 ARG APP
 RUN ./gradlew :$APP:quarkusBuild -Dquarkus.package.type=native -Dquarkus.native.native-image-xmx=2G
 
