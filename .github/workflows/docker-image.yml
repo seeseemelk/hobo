@@ -8,7 +8,7 @@ jobs:
   build:
     strategy:
       matrix:
-        app: [core, tasmota-conntector]
+        app: [core, tasmota-connector]
 
     runs-on: ubuntu-latest
 
