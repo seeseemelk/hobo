@@ -1,8 +1,8 @@
 name: Docker Images
 
 on:
-  push:
-    branches: [ "master" ]
+  release:
+    types: [created]
 
 jobs:
   build:
@@ -21,6 +21,9 @@ jobs:
       with:
         platforms: amd64,arm64
 
+    - name: Get version to publish
+      uses: damienaicheh/extract-version-from-tag-action@v1.0.0
+
     - name: Login to Docker Hub
       uses: docker/login-action@v2.1.0
       with:
@@ -31,4 +34,8 @@ jobs:
       run: docker buildx create --use
 
     - name: Build Docker images
-      run: docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} --tag seeseemelk/hobo-${{ matrix.app }}:snapshot .
+      run: |
+        docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} --tag seeseemelk/hobo-${{ matrix.app }}:latest .
+        docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} --tag seeseemelk/hobo-${{ matrix.app }}:$MAJOR .
+        docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} --tag seeseemelk/hobo-${{ matrix.app }}:$MAJOR.$MINOR .
+        docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} --tag seeseemelk/hobo-${{ matrix.app }}:$MAJOR.$MINOR.$PATCH .
