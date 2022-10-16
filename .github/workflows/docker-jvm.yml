@@ -35,8 +35,8 @@ jobs:
 
     - name: Build Docker images
       run: |
-        docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} -f docker.jvm --tag seeseemelk/hobo-${{ matrix.app }}:latest .
-        docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} -f docker.jvm --tag seeseemelk/hobo-${{ matrix.app }}:jvm-latest .
-        docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} -f docker.jvm --tag seeseemelk/hobo-${{ matrix.app }}:jvm-$MAJOR .
-        docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} -f docker.jvm --tag seeseemelk/hobo-${{ matrix.app }}:jvm-$MAJOR.$MINOR .
-        docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} -f docker.jvm --tag seeseemelk/hobo-${{ matrix.app }}:jvm-$MAJOR.$MINOR.$PATCH .
+        docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} -f Dockerfile.jvm --tag seeseemelk/hobo-${{ matrix.app }}:latest .
+        docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} -f Dockerfile.jvm --tag seeseemelk/hobo-${{ matrix.app }}:jvm-latest .
+        docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} -f Dockerfile.jvm --tag seeseemelk/hobo-${{ matrix.app }}:jvm-$MAJOR .
+        docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} -f Dockerfile.jvm --tag seeseemelk/hobo-${{ matrix.app }}:jvm-$MAJOR.$MINOR .
+        docker buildx build --push --platform=amd64,arm64 --build-arg APP=${{ matrix.app }} -f Dockerfile.jvm --tag seeseemelk/hobo-${{ matrix.app }}:jvm-$MAJOR.$MINOR.$PATCH .
