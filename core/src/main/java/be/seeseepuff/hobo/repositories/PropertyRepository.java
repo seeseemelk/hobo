@@ -2,7 +2,6 @@ package be.seeseepuff.hobo.repositories;
 
 import be.seeseepuff.hobo.models.StoredDevice;
 import be.seeseepuff.hobo.models.StoredProperty;
-import be.seeseepuff.hobo.utils.TimeUtils;
 import io.quarkus.hibernate.reactive.panache.PanacheRepository;
 import io.smallrye.mutiny.Uni;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +32,7 @@ public abstract class PropertyRepository<P extends StoredProperty<?>> implements
 
 	public Uni<P> insertProperty(P property)
 	{
-		property.setLastUpdated(TimeUtils.latestOf(property.getReportUpdated(), property.getRequestUpdated()));
+		property.setLastUpdated(null);
 		log.info("Persisting property: {}", property);
 		return persistAndFlush(property);
 	}

@@ -27,12 +27,13 @@ public class HoboSubscriptionClient extends AbstractVerticle
 	@Override
 	public void start()
 	{
-		hoboApi.propertyUpdates(PropertyUpdateFilter.withOwner(owner))
-			.onSubscription().invoke(() -> log.info("Subscribed to changes"))
-			.onItem().invoke(tasmota::onRequest)
-			.onFailure().invoke(ex -> log.error("Exception occurred while processing event", ex))
-			.onFailure().retry().withBackOff(Duration.ofSeconds(5)).indefinitely()
-			.onCompletion().invoke(() -> log.warn("Property requests completed"))
-			.subscribe().with(item -> {});
+			log.info("Subscribing to GraphQL update notifications");
+			hoboApi.propertyUpdates(PropertyUpdateFilter.withOwner(owner))
+				.onSubscription().invoke(() -> log.info("Subscribed to changes"))
+				.onItem().invoke(tasmota::onRequest)
+				.onFailure().invoke(ex -> log.error("Exception occurred while processing event", ex))
+				.onFailure().retry().withBackOff(Duration.ofSeconds(5)).indefinitely()
+				.onCompletion().invoke(() -> log.warn("Property requests completed"))
+				.subscribe().with(item -> {});
 	}
 }

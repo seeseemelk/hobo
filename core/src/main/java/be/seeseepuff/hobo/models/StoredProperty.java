@@ -4,6 +4,8 @@ import be.seeseepuff.hobo.dto.Property;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.Generated;
+import org.hibernate.annotations.GenerationTime;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -23,5 +25,6 @@ public abstract class StoredProperty<T> extends Property<T>
 	private String name;
 	private LocalDateTime requestUpdated;
 	private LocalDateTime reportUpdated;
+	@Generated(value = GenerationTime.ALWAYS)
 	private LocalDateTime lastUpdated;
 }

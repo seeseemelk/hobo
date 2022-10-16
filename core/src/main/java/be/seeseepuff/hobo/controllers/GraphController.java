@@ -18,7 +18,6 @@ import org.eclipse.microprofile.graphql.*;
 
 import javax.inject.Inject;
 import javax.persistence.NoResultException;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -108,9 +107,6 @@ public class GraphController
 	{
 		return updateProperty(deviceId, device -> deviceService.updateBoolProperties(device, updates, condition));
 	}
-
-//	@Mutation
-
 
 	@Subscription
 	public Multi<PropertyUpdate> propertyUpdates(PropertyUpdateFilter filter)
