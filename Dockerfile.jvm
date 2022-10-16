@@ -1,0 +1,24 @@
+#FROM --platform=$BUILDPLATFORM ghcr.io/graalvm/native-image:22.2.0 as build
+FROM --platform=$BUILDPLATFORM eclipse-temurin:11-jdk-alpine AS build
+ENTRYPOINT /bin/sh
+USER root
+WORKDIR /code
+COPY gradlew /code/gradlew
+COPY gradle /code/gradle
+COPY gradle.properties /code/gradle.properties
+COPY settings.gradle /code/settings.gradle
+COPY buildSrc /code/buildSrc
+COPY common /code/common
+COPY core /code/core
+COPY tasmota-connector /code/tasmota-connector
+ARG APP
+RUN ./gradlew :$APP:quarkusBuild -Dquarkus.package.type=uber-jar
+
+## Stage 2 : create the docker final image
+FROM eclipse-temurin:11-jre-alpine
+WORKDIR /work/
+ARG APP
+COPY --from=build /code/$APP/build/*.jar /work/application.jar
+RUN chmod 775 /work
+EXPOSE 8080
+CMD ["java", "-jar", "application.jar"]
